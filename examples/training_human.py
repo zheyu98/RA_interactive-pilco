@@ -15,8 +15,8 @@ class myPendulum():
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         ##
-        self.l = 1.5
-        self.m = 2
+        self.l = 10
+        self.m = 10
 
     def step(self, action):
         return self.env.step(action)
@@ -75,8 +75,7 @@ if __name__=='__main__':
         set_trainable(model.likelihood.variance, False)
 
     r_new = np.zeros((T, 1))
-    while True:
-        controller.optimize_models(maxiter=maxiter, restarts=restarts)
+    while True:      
         X_new, Y_new, r, _ = rollout(env, None, timesteps=T, p_use=False, random=True, SUBS=SUBS, render=True)
         # for i in range(len(X_new)):
         #     r_new[:, 0] = R.compute_reward(X_new[i,None,:], 0.001 * np.eye(state_dim))[0]
@@ -86,13 +85,15 @@ if __name__=='__main__':
 
         # Update dataset
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
-        controller.model.set_data((X, Y))
+        
 
         judge = input('Continue to collect data or not? (y/n)\n')
         if judge == 'n': 
             np.save('./examples/training_data_X.npy', X)
             np.save('./examples/training_data_Y.npy', Y)
             break
+    controller.model.set_data((X, Y))
+    controller.optimize_models(maxiter=maxiter, restarts=restarts)
 
     # Demonstration
     print('Evaluate the performance of the human controller\n')

@@ -25,14 +25,15 @@ def rollout(env, controller, timesteps, p_use=False, random=False, SUBS=1, rende
         u_human = 0
         in_magni = 0.2
         u_ps = tf.zeros([1], dtype=tf.float64)
-        t1=threading.Thread(target=start_key_listen)
-        t1.start()
-        print('You could give some corrective feedback: (Left or Right arrow)\n')
+        if not p_use:
+            t1=threading.Thread(target=start_key_listen)
+            t1.start()
+            print('You could give some corrective feedback: (Left or Right arrow)\n')
 
         for timestep in range(timesteps):
             if render: env.render()
             if p_use: u_ps = policy(env, controller, x, random)
-            if timestep == 0 & p_use == False:
+            if timestep == 0:
                 sec = input('Let me know when to start.\n')
                 time.sleep(int(sec))
                 print('start now!')
@@ -51,11 +52,12 @@ def rollout(env, controller, timesteps, p_use=False, random=False, SUBS=1, rende
             ep_return_sampled += r
             x = x_new
             if done: break
-            time.sleep(0.3)
-        autoin = Controller()
-        autoin.press(Key.esc)
-        autoin.release(Key.esc)
-        t1.join()
+            time.sleep(0.15)
+        if not p_use:
+            autoin = Controller()
+            autoin.press(Key.esc)
+            autoin.release(Key.esc)
+            t1.join()
         return np.stack(X), np.stack(Y), ep_return_sampled, ep_return_full
 
 def policy(env, controller, x, random):
