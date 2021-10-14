@@ -11,21 +11,21 @@ import gpflow
 import time
 import pynput
 import threading
-from pynput.keyboard import Key, Listener, Controller
+from pynput.keyboard import Key, Listener, Controller, KeyCode
 ##
 float_type = config.default_float()
 
-def rollout(env, controller, timesteps, p_use=False, random=False, SUBS=1, render=False):
-        X = []; Y = []
+def rollout(env, controller, timesteps, p_use=False, demon=False, random=False, SUBS=1, render=False):
+        X = []; Y = []; R = []
         x = env.reset()
         ep_return_full = 0
         ep_return_sampled = 0
 
         global u_human
         u_human = 0
-        in_magni = 0.2
+        in_magni = 0.4
         u_ps = tf.zeros([1], dtype=tf.float64)
-        if not p_use:
+        if not demon:
             t1=threading.Thread(target=start_key_listen)
             t1.start()
             print('You could give some corrective feedback: (Left or Right arrow)\n')
@@ -37,7 +37,7 @@ def rollout(env, controller, timesteps, p_use=False, random=False, SUBS=1, rende
                 sec = input('Let me know when to start.\n')
                 time.sleep(int(sec))
                 print('start now!')
-            u = u_ps + cut(u_human, 8)*in_magni
+            u = u_ps + cut(u_human, 10)*in_magni
             for i in range(SUBS):
                 x_new, r, done, _ = env.step(u)
                 ep_return_full += r
@@ -49,16 +49,17 @@ def rollout(env, controller, timesteps, p_use=False, random=False, SUBS=1, rende
             #     print("Return so far: ", ep_return_full)
             X.append(x)
             Y.append(u)
+            R.append(r)
             ep_return_sampled += r
             x = x_new
             if done: break
-            time.sleep(0.15)
-        if not p_use:
+            time.sleep(0.3)
+        if not demon:
             autoin = Controller()
             autoin.press(Key.esc)
             autoin.release(Key.esc)
             t1.join()
-        return np.stack(X), np.stack(Y), ep_return_sampled, ep_return_full
+        return np.stack(X), np.stack(Y), np.array(R), ep_return_sampled, ep_return_full
 
 def policy(env, controller, x, random):
     if random:
@@ -71,16 +72,22 @@ def policy(env, controller, x, random):
 def on_press(key):
     global u_human
     if key == Key.right:
-        if u_human>0:
-            u_human += 1
-        else:
-            u_human = 1
+        u_human = 4
     if key == Key.left:
-        if u_human<0:
-            u_human -= 1
-        else:
-            u_human = -1
+        u_human = -4
     if key == Key.down:
+        u_human = 0
+    if key == KeyCode(char = 'a'):
+        if u_human <0:
+            u_human -= 0.3
+        else:
+            u_human = -0.3
+    if key == KeyCode(char = 'd'):
+        if u_human >0:
+            u_human += 0.3
+        else:
+            u_human = 0.3
+    if key == KeyCode(char = 's'):
         u_human = 0
 
 def on_release(key):
