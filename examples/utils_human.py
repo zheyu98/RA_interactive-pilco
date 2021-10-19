@@ -23,7 +23,7 @@ def rollout(env, controller, timesteps, p_use=False, demon=False, random=False, 
 
         global u_human
         u_human = 0
-        in_magni = 0.4
+        in_magni = 0.2
         u_ps = tf.zeros([1], dtype=tf.float64)
         if not demon:
             t1=threading.Thread(target=start_key_listen)
@@ -72,21 +72,21 @@ def policy(env, controller, x, random):
 def on_press(key):
     global u_human
     if key == Key.right:
-        u_human = 4
+        u_human = 8
     if key == Key.left:
-        u_human = -4
+        u_human = -8
     if key == Key.down:
         u_human = 0
     if key == KeyCode(char = 'a'):
         if u_human <0:
-            u_human -= 0.3
+            u_human -= 1
         else:
-            u_human = -0.3
+            u_human = -1
     if key == KeyCode(char = 'd'):
         if u_human >0:
-            u_human += 0.3
+            u_human += 1
         else:
-            u_human = 0.3
+            u_human = 1
     if key == KeyCode(char = 's'):
         u_human = 0
 
@@ -126,3 +126,46 @@ class Normalised_Env():
 
     def render(self):
         self.env.render()
+
+def rollout_both(env, timesteps, SUBS=1, render=False):
+        X = []; Y = []; Xc = []; Yc = []
+        x = env.reset()
+        ep_return_full = 0
+        ep_return_sampled = 0
+
+        global u_human
+        u_human = 0
+        in_magni = 0.2
+        u_ps = tf.zeros([1], dtype=tf.float64)
+
+        t1=threading.Thread(target=start_key_listen)
+        t1.start()
+        print('You could give some corrective feedback: (Left or Right arrow)\n')
+
+        for timestep in range(timesteps):
+            if render: env.render()
+            if timestep == 0:
+                sec = input('Let me know when to start.\n')
+                time.sleep(int(sec))
+                print('start now!')
+            u = u_ps + cut(u_human, 10)*in_magni
+            for i in range(SUBS):
+                x_new, r, done, _ = env.step(u)
+                ep_return_full += r
+                if done: break
+                if render: env.render()
+            Xc.append(x)
+            Yc.append(u)
+            X.append(np.hstack((x, u)))
+            Y.append(x_new - x)
+            ep_return_sampled += r
+            x = x_new
+            if done: break
+            time.sleep(0.3)
+
+        autoin = Controller()
+        autoin.press(Key.esc)
+        autoin.release(Key.esc)
+        t1.join()
+        env.close()
+        return np.stack(Xc), np.stack(Yc), np.stack(X), np.stack(Y)
