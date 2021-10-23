@@ -5,8 +5,9 @@ float_type = config.default_float()
 
 
 class ExponentialReward(Module):
-    def __init__(self, state_dim, W=None, t=None):
+    def __init__(self, state_dim, W=None, t=None, select=None):
         self.state_dim = state_dim
+        self.select = select
         if W is not None:
             self.W = Parameter(np.reshape(W, (state_dim, state_dim)), trainable=False)
         else:
@@ -15,6 +16,7 @@ class ExponentialReward(Module):
             self.t = Parameter(np.reshape(t, (1, state_dim)), trainable=False)
         else:
             self.t = Parameter(np.zeros((1, state_dim)), trainable=False)
+        self.reach = 0
 
     def compute_reward(self, m, s):
         '''
@@ -28,6 +30,12 @@ class ExponentialReward(Module):
         Output S  : [1, 1]
         '''
         # TODO: Clean up this
+        # print(self.reach)
+        # print((m - self.t)[0,0])
+        if self.select is not None:
+            m = tf.gather(m, self.select, axis=1)
+            s = tf.gather(s, self.select, axis=0)
+            s = tf.gather(s, self.select, axis=1)
 
         SW = s @ self.W
 
@@ -48,6 +56,11 @@ class ExponentialReward(Module):
         sR = r2 - muR @ muR
         muR.set_shape([1, 1])
         sR.set_shape([1, 1])
+        #
+        # if j<n-1:
+        #     if abs((m - self.t)[0,0]) <0.2: self.reach = 1
+        # if j == n-1 and self.reach == 0: 
+        #     muR = muR - 100 
         return muR, sR
 
 class UnboundedExponentialReward(Module):
