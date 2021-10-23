@@ -62,25 +62,25 @@ if __name__=='__main__':
     J = 4
     N = 6
     restarts = 2
-
+ 
     env = myPendulum()
 
     if input("Give demonstration or not (y/n)\n") == 'y':
         Xc, Yc, X, Y = rollout_both(env,timesteps=T,SUBS=SUBS, render=True)
     else:
-        if os.path.exists('./examples/training_data_X.npy') & os.path.exists('./examples/training_data_Y.npy') \
-        & os.path.exists('./examples/training_data_Yc.npy') & os.path.exists('./examples/training_data_Xc.npy'):
-            Xc = np.load('./examples/training_data_Xc.npy')
-            Yc = np.load('./examples/training_data_Yc.npy')
-            X = np.load('./examples/training_data_X.npy')
-            Y = np.load('./examples/training_data_Y.npy')
+        if os.path.exists('./examples/human/training_data_X.npy') & os.path.exists('./examples/human/training_data_Y.npy') \
+        & os.path.exists('./examples/human/training_data_Yc.npy') & os.path.exists('./examples/human/training_data_Xc.npy'):
+            Xc = np.load('./examples/human/training_data_Xc.npy')
+            Yc = np.load('./examples/human/training_data_Yc.npy')
+            X = np.load('./examples/human/training_data_X.npy')
+            Y = np.load('./examples/human/training_data_Y.npy')
         else:
             raise Exception('Please give demonstration')
 
-    np.save('./examples/training_data_X.npy', X)
-    np.save('./examples/training_data_Y.npy', Y)
-    np.save('./examples/training_data_Xc.npy', Xc)
-    np.save('./examples/training_data_Yc.npy', Yc)
+    np.save('./examples/human/training_data_X.npy', X)
+    np.save('./examples/human/training_data_Y.npy', Y)
+    np.save('./examples/human/training_data_Xc.npy', Xc)
+    np.save('./examples/human/training_data_Yc.npy', Yc)
 
     data_c = [Xc,Yc]
     state_dim = Y.shape[1]

@@ -50,7 +50,7 @@ class myPendulum():
 #     X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new)); R = np.append(R, R_new)
 #     return X, Y, R
 
-def check(X, X_new, Y, Y_new, error, sigma, controller):
+def check(X, X_new, Y, Y_new, error, sigma, step, controller):
     diff = controller.model.K(X, X_new)
     vars = []; ind_up = []; ind_agg = []
     for model in controller.model.models:
@@ -58,7 +58,7 @@ def check(X, X_new, Y, Y_new, error, sigma, controller):
     vars = np.stack(vars)
     norm_diff = diff/vars[:, np.newaxis, np.newaxis]
     for i in range(X_new.shape[0]):
-        if tf.reduce_all(norm_diff[:,:,i] < sigma): ind_up.append(i)
+        if tf.reduce_any(norm_diff[:,:,i] > sigma): ind_up.append(i)
         else: ind_agg.append(i)
     # aggregate
     X_a = X_new[ind_agg,:]
@@ -66,7 +66,7 @@ def check(X, X_new, Y, Y_new, error, sigma, controller):
     error_a = np.transpose(error[ind_agg, :])
     i1 = np.matmul(diff_a, error_a[:,:,None])
     i2 = np.transpose(np.squeeze(i1,axis=2))
-    Y = Y + i2
+    Y = Y + i2 * step
     # add
     X = np.vstack((X, X_new[ind_agg,:]))
     Y = np.vstack((Y, Y_new[ind_agg,:]))    
@@ -94,9 +94,9 @@ if __name__=='__main__':
     # Collect data for human controller
     j1 = input("Load database or not? (y/n)\n")
     if j1 == 'y':
-        if os.path.exists('./examples/training_data_X.npy') & os.path.exists('./examples/training_data_Y.npy'):
-            X = np.load('./examples/training_data_X.npy')
-            Y = np.load('./examples/training_data_Y.npy')
+        if os.path.exists('./examples/training_data_Xc.npy') & os.path.exists('./examples/training_data_Yc.npy'):
+            X = np.load('./examples/training_data_Xc.npy')
+            Y = np.load('./examples/training_data_Yc.npy')
         else:
             print("The database doesn't exist\n")
             X, Y, _, _, _ = rollout(env, None, timesteps=T, control_dim=control_dim, SUBS=SUBS, render=True)
@@ -132,8 +132,8 @@ if __name__=='__main__':
             # Update dataset
             # ep = [0.3, 0.3, 0.1]
             # X, Y, R = check(X, Y, R, X_new, Y_new, R_new, ep)
-            sigma = 0.2
-            X, Y = check(X, X_new, Y, Y_new, error, sigma, controller)
+            sigma = 0.7; step = 0.3
+            X, Y = check(X, X_new, Y, Y_new, error, sigma, step, controller)
             controller.model.set_data((X, Y))
             
             judge = input('Continue to collect data or not? (y/n)\n')

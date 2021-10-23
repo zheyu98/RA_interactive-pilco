@@ -73,8 +73,10 @@ def on_press(key):
     global u_human
     if key == Key.right:
         u_human = 8
+        # u_human = 1
     if key == Key.left:
         u_human = -8
+        # u_human = 0
     if key == Key.down:
         u_human = 0
     if key == KeyCode(char = 'a'):
@@ -127,7 +129,7 @@ class Normalised_Env():
     def render(self):
         self.env.render()
 
-def rollout_both(env, timesteps, SUBS=1, render=False):
+def rollout_both(env, timesteps, SUBS=1, random=False, render=False):
         X = []; Y = []; Xc = []; Yc = []
         x = env.reset()
         ep_return_full = 0
@@ -149,11 +151,15 @@ def rollout_both(env, timesteps, SUBS=1, render=False):
                 time.sleep(int(sec))
                 print('start now!')
             u = u_ps + cut(u_human, 10)*in_magni
+            # u = u_human
+            if random: u = env.action_space.sample()
             for i in range(SUBS):
+                # x_new, r, done, _, sig = env.step(u)
                 x_new, r, done, _ = env.step(u)
                 ep_return_full += r
                 if done: break
                 if render: env.render()
+            # if sig == 1:
             Xc.append(x)
             Yc.append(u)
             X.append(np.hstack((x, u)))
@@ -161,11 +167,11 @@ def rollout_both(env, timesteps, SUBS=1, render=False):
             ep_return_sampled += r
             x = x_new
             if done: break
-            time.sleep(0.3)
+            time.sleep(0.1)
 
         autoin = Controller()
         autoin.press(Key.esc)
         autoin.release(Key.esc)
         t1.join()
-        env.close()
+        # env.close()
         return np.stack(Xc), np.stack(Yc), np.stack(X), np.stack(Y)

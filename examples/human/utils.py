@@ -35,8 +35,15 @@ def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=Fa
             #     time.sleep(int(sec))
             #     print('start now!')
             u_ps = policy(env, pilco, x, random)
+
+            ##################################################
+            # if abs(u_ps-0) <= abs(u_ps-1) :u=0
+            # else:u=1
+            ###############################################3##
+
             u = u_ps #+ cut(u_human, 8)*in_magni
             for i in range(SUBS):
+                # x_new, r, done, _, sig = env.step(u)
                 x_new, r, done, _ = env.step(u)
                 ep_return_full += r
                 if done: break
@@ -45,12 +52,21 @@ def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=Fa
             #     print("Action: ", u)
             #     print("State : ", x_new)
             #     print("Return so far: ", ep_return_full)
+
+            ##########################
+            # if sig == 1:
+            #     X.append(np.hstack((x, u)))
+            #     Y.append(x_new - x)
+            #     ep_return_sampled += r
+            #     x = x_new
+            ##########################
+
             X.append(np.hstack((x, u)))
             Y.append(x_new - x)
             ep_return_sampled += r
             x = x_new
             if done: break
-            # time.sleep(0.3)
+            # time.sleep(0.1)
         # autoin = Controller()
         # autoin.press(Key.esc)
         # autoin.release(Key.esc)
@@ -64,7 +80,7 @@ def policy(env, pilco, x, random):
     #     return pilco.compute_action(x[None, :])[0, :]
     env.action_space.np_random.seed(123)
     if random:
-        return env.action_space.sample() #+ pilco.compute_action(x[None, :])[0, :]
+        return env.action_space.sample() + pilco.compute_action(x[None, :])[0, :]
     else:
         return pilco.compute_action(x[None, :])[0, :]
 
@@ -155,3 +171,45 @@ def load_pilco(path, sparse=False, controller=None, reward=None, m_init=None, S_
     #    print(values)
     #    gpflow.utilities.multiple_assign(m, values)
     return pilco, X, Y
+
+def rollout_comb(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=False):
+        X = []; Y = []
+        x = env.reset()
+        ep_return_full = 0
+        ep_return_sampled = 0
+        ## Add human input
+        # global u_human
+        # u_human = 0
+        # in_magni = 0.2
+        # t1=threading.Thread(target=start_key_listen)
+        # t1.start()
+        # print('You could give some corrective feedback: (Left or Right arrow)')
+        # time.sleep(1)
+        for timestep in range(timesteps):
+            if render: env.render()
+            # if timestep == 0:
+            #     sec = input('Let me know when to start.\n')
+            #     time.sleep(int(sec))
+            #     print('start now!')
+            u_ps = policy(env, pilco, x, random)
+            u = u_ps #+ cut(u_human, 8)*in_magni
+            for i in range(SUBS):
+                x_new, r, done, _ = env.step(u)
+                ep_return_full += r
+                if done: break
+                if render: env.render()
+            # if verbose:
+            #     print("Action: ", u)
+            #     print("State : ", x_new)
+            #     print("Return so far: ", ep_return_full)
+            X.append(np.hstack((x, u)))
+            Y.append(x_new - x)
+            ep_return_sampled += r
+            x = x_new
+            if done: break
+            # time.sleep(0.3)
+        # autoin = Controller()
+        # autoin.press(Key.esc)
+        # autoin.release(Key.esc)
+        # t1.join()
+        return np.stack(X), np.stack(Y), ep_return_sampled, ep_return_full
