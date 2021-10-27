@@ -17,6 +17,7 @@ float_type = config.default_float()
 
 def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=False):
         X = []; Y = []
+        success = False
         x = env.reset()
         ep_return_full = 0
         ep_return_sampled = 0
@@ -37,16 +38,16 @@ def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=Fa
             u_ps = policy(env, pilco, x, random)
 
             ##################################################
-            # if abs(u_ps-0) <= abs(u_ps-1) :u=0
-            # else:u=1
+            if abs(u_ps-0) <= abs(u_ps-1) :u=0
+            else:u=1
             ###############################################3##
 
-            u = u_ps #+ cut(u_human, 8)*in_magni
+            # u = u_ps #+ cut(u_human, 8)*in_magni
             for i in range(SUBS):
                 # x_new, r, done, _, sig = env.step(u)
                 x_new, r, done, _ = env.step(u)
                 ep_return_full += r
-                if done: break
+                # if done: break
                 if render: env.render()
             # if verbose:
             #     print("Action: ", u)
@@ -65,22 +66,23 @@ def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=Fa
             Y.append(x_new - x)
             ep_return_sampled += r
             x = x_new
-            if done: break
+            # if done: break
+            #if done: success = True
             # time.sleep(0.1)
         # autoin = Controller()
         # autoin.press(Key.esc)
         # autoin.release(Key.esc)
         # t1.join()
-        return np.stack(X), np.stack(Y), ep_return_sampled, ep_return_full
+        return np.stack(X), np.stack(Y), ep_return_sampled, ep_return_full#, success
 
 def policy(env, pilco, x, random):
     # if random:
     #     return env.action_space.sample()
     # else:
     #     return pilco.compute_action(x[None, :])[0, :]
-    env.action_space.np_random.seed(123)
+    # env.action_space.np_random.seed(123)
     if random:
-        return env.action_space.sample() + pilco.compute_action(x[None, :])[0, :]
+        return env.action_space.sample()
     else:
         return pilco.compute_action(x[None, :])[0, :]
 
@@ -207,7 +209,7 @@ def rollout_comb(env, pilco, timesteps, verbose=True, random=False, SUBS=1, rend
             ep_return_sampled += r
             x = x_new
             if done: break
-            # time.sleep(0.3)
+            # time.sleep(0.1)
         # autoin = Controller()
         # autoin.press(Key.esc)
         # autoin.release(Key.esc)

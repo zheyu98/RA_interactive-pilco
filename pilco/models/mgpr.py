@@ -95,7 +95,6 @@ class MGPR(gpflow.Module):
         OUT: mean (M) (row vector), variance (S) of the action
              and inv(s)*input-ouputcovariance
         """
-
         s = tf.tile(s[None, None, :, :], [self.num_outputs, self.num_outputs, 1, 1])
         inp = tf.tile(self.centralized_input(m)[None, :, :], [self.num_outputs, 1, 1])
 

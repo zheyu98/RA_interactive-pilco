@@ -72,11 +72,11 @@ def policy(env, controller, x, random):
 def on_press(key):
     global u_human
     if key == Key.right:
-        u_human = 8
-        # u_human = 1
+        # u_human = 8
+        u_human = 5
     if key == Key.left:
-        u_human = -8
-        # u_human = 0
+        # u_human = -8
+        u_human = -5
     if key == Key.down:
         u_human = 0
     if key == KeyCode(char = 'a'):
@@ -173,5 +173,5 @@ def rollout_both(env, timesteps, SUBS=1, random=False, render=False):
         autoin.press(Key.esc)
         autoin.release(Key.esc)
         t1.join()
-        # env.close()
+        env.close()
         return np.stack(Xc), np.stack(Yc), np.stack(X), np.stack(Y)

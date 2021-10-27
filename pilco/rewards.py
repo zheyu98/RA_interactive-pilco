@@ -137,3 +137,43 @@ class CombinedRewards(Module):
             total_output_covariance += coef**2 * output_covariance
 
         return total_output_mean, total_output_covariance
+
+class ExplodeReward(Module):
+    def __init__(self, state_dim, W=None, t=None, select=None):
+        self.state_dim = state_dim
+        self.select = select
+        if W is not None:
+            self.W = Parameter(np.reshape(W, (state_dim, state_dim)), trainable=False)
+        else:
+            self.W = Parameter(np.eye(state_dim), trainable=False)
+        if t is not None:
+            self.t = Parameter(np.reshape(t, (1, state_dim)), trainable=False)
+        else:
+            self.t = Parameter(np.zeros((1, state_dim)), trainable=False)
+
+    def compute_reward(self, m, s):
+        if self.select is not None:
+            m = tf.gather(m, self.select, axis=1)
+            s = tf.gather(s, self.select, axis=0)
+            s = tf.gather(s, self.select, axis=1)
+
+        SW = s @ self.W
+
+        iSpW = tf.transpose(
+                tf.linalg.solve( (tf.eye(self.state_dim, dtype=float_type) + SW),
+                tf.transpose(self.W), adjoint=True))
+
+        muR = tf.exp((m-self.t) @  iSpW @ tf.transpose(m-self.t)/2) / \
+                tf.sqrt( tf.linalg.det(tf.eye(self.state_dim, dtype=float_type) + SW) )
+
+        i2SpW = tf.transpose(
+                tf.linalg.solve( (tf.eye(self.state_dim, dtype=float_type) + 2*SW),
+                tf.transpose(self.W), adjoint=True))
+
+        r2 =  tf.exp((m-self.t) @ i2SpW @ tf.transpose(m-self.t)) / \
+                tf.sqrt( tf.linalg.det(tf.eye(self.state_dim, dtype=float_type) + 2*SW) )
+
+        sR = r2 - muR @ muR
+        muR.set_shape([1, 1])
+        sR.set_shape([1, 1])
+        return muR, sR

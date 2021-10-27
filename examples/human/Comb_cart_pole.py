@@ -92,9 +92,10 @@ class mycartpole():
 
         if not done:
             self.state = state
-            reward = 1.0; sig = 1
+            reward = 1.0
         else: 
-            reward = 0.0; sig = 0
+            self.state = state
+            reward = 0.0
         # elif self.steps_beyond_done is None:
         #     # Pole just fell!
         #     self.steps_beyond_done = 0
@@ -109,7 +110,7 @@ class mycartpole():
         #         )
         #     self.steps_beyond_done += 1
         #     reward = 0.0
-        return np.array(self.state, dtype=np.float64), reward, False, {}, sig
+        return np.array(self.state, dtype=np.float64), reward, done, {}
 
     def reset(self):
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
@@ -181,10 +182,13 @@ class mycartpole():
 
         return self.viewer.render(return_rgb_array=mode == "rgb_array")
 
+    def close(self):
+        return self.env.close()
+
 if __name__=='__main__':
     maxiter=10
     max_action=1.0 # actions for these environments are discrete
-    T = 40
+    T = 80
     J = 3
     N = 12
     T_sim = 40
@@ -205,12 +209,16 @@ if __name__=='__main__':
         else:
             raise Exception('Please give demonstration')
 
-    np.save('./examples/human/training_data_cp_X.npy', X)
-    np.save('./examples/human/training_data_cp_Y.npy', Y)
-    np.save('./examples/human/training_data_cp_Xc.npy', Xc)
-    np.save('./examples/human/training_data_cp_Yc.npy', Yc)
+    # np.save('./examples/human/training_data_cp_X.npy', X)
+    # np.save('./examples/human/training_data_cp_Y.npy', Y)
+    # np.save('./examples/human/training_data_cp_Xc.npy', Xc)
+    # np.save('./examples/human/training_data_cp_Yc.npy', Yc)
 
-    print(X.shape); print(Y.shape); print(Xc.shape); print(Yc.shape)
+    np.save('training_data_cp_X.npy', X)
+    np.save('training_data_cp_Y.npy', Y)
+    np.save('training_data_cp_Xc.npy', Xc)
+    np.save('training_data_cp_Yc.npy', Yc)
+
     Yc = Yc[:,None]
 
     data_c = [Xc,Yc]
