@@ -16,7 +16,7 @@ from pynput.keyboard import Key, Listener, Controller
 float_type = config.default_float()
 
 def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=False):
-        X = []; Y = []
+        X = []; Y = []; counter = 0
         success = False
         x = env.reset()
         ep_return_full = 0
@@ -61,9 +61,12 @@ def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=Fa
             #     ep_return_sampled += r
             #     x = x_new
             ##########################
-
-            X.append(np.hstack((x, u)))
-            Y.append(x_new - x)
+            counter += 1
+            if counter % 6 == 0:
+                X.append(np.hstack((x, u)))
+                Y.append(x_new - x)
+            # X.append(np.hstack((x, u)))
+            # Y.append(x_new - x)
             ep_return_sampled += r
             x = x_new
             # if done: break
@@ -175,7 +178,7 @@ def load_pilco(path, sparse=False, controller=None, reward=None, m_init=None, S_
     return pilco, X, Y
 
 def rollout_comb(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=False):
-        X = []; Y = []
+        X = []; Y = []; counter = 0
         x = env.reset()
         ep_return_full = 0
         ep_return_sampled = 0
@@ -198,18 +201,22 @@ def rollout_comb(env, pilco, timesteps, verbose=True, random=False, SUBS=1, rend
             for i in range(SUBS):
                 x_new, r, done, _ = env.step(u)
                 ep_return_full += r
-                if done: break
+                # if done: break
                 if render: env.render()
             # if verbose:
             #     print("Action: ", u)
             #     print("State : ", x_new)
             #     print("Return so far: ", ep_return_full)
+            # if counter % 6 == 0:
+            #     X.append(np.hstack((x, u)))
+            #     Y.append(x_new - x)
+            # counter += 1
             X.append(np.hstack((x, u)))
             Y.append(x_new - x)
             ep_return_sampled += r
             x = x_new
-            if done: break
-            # time.sleep(0.1)
+            # if done: break
+            time.sleep(0.05)
         # autoin = Controller()
         # autoin.press(Key.esc)
         # autoin.release(Key.esc)

@@ -97,7 +97,7 @@ if __name__=='__main__':
     controller = RbfController(state_dim=state_dim, control_dim=control_dim, num_basis_functions=25)
 
     R = ExplodeReward(state_dim=1,
-                    t=np.divide([-0.5,0.0] - env.m, env.std)[0],
+                    t=np.divide([-1.0,0.0] - env.m, env.std)[0],
                     W=np.array([1.0]) + 1e-6,
                     select = [0]
                     )
@@ -113,7 +113,7 @@ if __name__=='__main__':
                     )
     R_comb = CombinedRewards(state_dim=state_dim, rewards=[R_pos, R_vel], coefs=[1.0, 2.0])
 
-    pilco = PILCO((X, Y), controller=controller, horizon=T, reward=R_comb, m_init=m_init, S_init=S_init)
+    pilco = PILCO((X, Y), controller=controller, horizon=T, reward=R, m_init=m_init, S_init=S_init)
 
     best_r = 0
     all_Rs = np.zeros((X.shape[0], 1))

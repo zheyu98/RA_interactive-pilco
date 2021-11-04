@@ -110,8 +110,8 @@ if __name__=='__main__':
     weights = np.diag([2.0, 2.0, 2.0, 2.0, 0.3, 0.3])
     m_init = np.reshape([1.0, 0.0, 1.0, 0.0, 0.0, 0.0], (1,6))
     S_init = np.diag([0.01, 0.05, 0.01, 0.05, 0.01, 0.01])
-    T = 100
-    T_sim = T
+    T = 40
+    T_sim = 100
     J = 2
     N = 6
     restarts = 2
@@ -147,10 +147,11 @@ if __name__=='__main__':
     # Initial random rollouts to generate a dataset
     # X, Y, _, _ = rollout(env, pilco, timesteps=T, random=True, SUBS=SUBS, render=True)
     for i in range(1,J):
-        X_, Y_, _, _, success = rollout(env, pilco, timesteps=T, random=False, SUBS=SUBS, render=True)
+        X_, Y_, _, _, = rollout(env, pilco, timesteps=T, random=False, SUBS=SUBS, render=True)
         X = np.vstack((X, X_))
         Y = np.vstack((Y, Y_))
     pilco.mgpr.set_data((X, Y))
+    print(X.shape); print(Y.shape)
 
     # for numerical stability, we can set the likelihood variance parameters of the GP models
     for model in pilco.mgpr.models:
@@ -163,12 +164,12 @@ if __name__=='__main__':
         pilco.optimize_models(maxiter=maxiter, restarts=2)
         pilco.optimize_policy(maxiter=maxiter, restarts=2)
 
-        X_new, Y_new, _, _, success = rollout(env, pilco, timesteps=T_sim, verbose=True, SUBS=SUBS, render=True)
+        X_new, Y_new, _, _, = rollout(env, pilco, timesteps=T_sim, verbose=True, SUBS=SUBS, render=True)
 
         # Since we had decide on the various parameters of the reward function
         # we might want to verify that it behaves as expected by inspection
-        if success:
-            print("Succeed in ", rollouts, "th rollout")
+        # if success:
+        #     print("Succeed in ", rollouts, "th rollout")
         for i in range(len(X_new)):
                 r_new[:, 0] = R.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]
         total_r = sum(r_new)
@@ -178,6 +179,7 @@ if __name__=='__main__':
         # Update dataset
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         pilco.mgpr.set_data((X, Y))
+        print(X.shape); print(Y.shape)
 
     last = input('last command (y/n)\n')
     if last == 'y':

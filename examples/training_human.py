@@ -11,7 +11,7 @@ np.random.seed(0)
 
 class myPendulum():
     def __init__(self):
-        self.env = gym.make('Pendulum-v0').env
+        self.env = gym.make('Pendulum-v1').env
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         ##
@@ -51,25 +51,38 @@ class myPendulum():
 #     return X, Y, R
 
 def check(X, X_new, Y, Y_new, error, sigma, controller):
-    diff = controller.model.K(X, X_new)
-    vars = []; ind_up = []; ind_agg = []
+    # K_star = controller.model.K(X, X_new)
+    vars = []; ind_add = []; ind_agg = []
     for model in controller.model.models:
         vars.append(model.kernel.variance)
     vars = np.stack(vars)
-    norm_diff = diff/vars[:, np.newaxis, np.newaxis]
+
+    # Calculate the variance (uncertainty) at a new input
     for i in range(X_new.shape[0]):
-        if tf.reduce_all(norm_diff[:,:,i] < sigma): ind_up.append(i)
+        K_starstar = controller.model.K(X_new[i,:], X_new[i,:])
+        K_star = controller.model.K(X, X_new[i,:])
+        K = controller.model.K(X, X)
+        classify = []
+        for j in range(K.shape[0]):
+            print(K_star[j,...].shape); print(np.linalg.inv(K[j,...]).shape)
+            var = K_starstar[j,...] - np.transpose(K_star[j,...,None]) @ np.linalg.inv(K[j,...]) @ K_star[j,...,None]
+            var_p_max = np.max(K[0,...]); var_p_min = np.min(K[0,...])
+            if (var-var_p_min) / (var_p_max-var_p_min) > sigma: classify.append(True)
+            else: classify.append(False)
+        classify = np.array(classify)
+        if np.all(classify): ind_add.append(i)
         else: ind_agg.append(i)
+
     # aggregate
     X_a = X_new[ind_agg,:]
     diff_a = controller.model.K(X, X_a) / vars[:, np.newaxis, np.newaxis]
     error_a = np.transpose(error[ind_agg, :])
     i1 = np.matmul(diff_a, error_a[:,:,None])
     i2 = np.transpose(np.squeeze(i1,axis=2))
-    Y = Y + i2
+    Y = Y + i2 * 0.5
     # add
-    X = np.vstack((X, X_new[ind_agg,:]))
-    Y = np.vstack((Y, Y_new[ind_agg,:]))    
+    X = np.vstack((X, X_new[ind_add,:]))
+    Y = np.vstack((Y, Y_new[ind_add,:]))    
     return X, Y    
 
 
@@ -94,9 +107,9 @@ if __name__=='__main__':
     # Collect data for human controller
     j1 = input("Load database or not? (y/n)\n")
     if j1 == 'y':
-        if os.path.exists('./examples/training_data_X.npy') & os.path.exists('./examples/training_data_Y.npy'):
-            X = np.load('./examples/training_data_X.npy')
-            Y = np.load('./examples/training_data_Y.npy')
+        if os.path.exists('./examples/training_data_ph_X.npy') & os.path.exists('./examples/training_data_ph_Y.npy'):
+            X = np.load('./examples/training_data_ph_X.npy')
+            Y = np.load('./examples/training_data_ph_Y.npy')
         else:
             print("The database doesn't exist\n")
             X, Y, _, _, _ = rollout(env, None, timesteps=T, control_dim=control_dim, SUBS=SUBS, render=True)
@@ -106,6 +119,8 @@ if __name__=='__main__':
         #     X_, Y_, _, _ = rollout(env, None, timesteps=T, random=True, SUBS=SUBS, render=True)
         #     X = np.vstack((X, X_))
         #     Y = np.vstack((Y, Y_))
+    np.save('./examples/training_data_ph_X.npy', X)
+    np.save('./examples/training_data_ph_Y.npy', Y)
     
     X_hyper = X[:T,:]
     Y_hyper = Y[:T,:]
@@ -123,26 +138,29 @@ if __name__=='__main__':
     controller.optimize_models(maxiter=maxiter, restarts=restarts)
   
     # r_new = np.zeros((T, 1))
-    j2 = input("Continue to collect data or not? (y/n)\n")
-    if j2 == 'y':
-        while True:
-            X_new, Y_new, error, r, _ = rollout(env, controller, timesteps=T, control_dim=control_dim, p_use=True, SUBS=SUBS, render=True)
-            print("Total reward of this turn", r)   
+    # j2 = input("Continue to collect data or not? (y/n)\n")
+    # if j2 == 'y':
+    q = 0
+    while q < 10:
+        X_new, Y_new, error, r, _ = rollout(env, controller, timesteps=T, control_dim=control_dim, p_use=True, SUBS=SUBS, render=True)
+        print("Total reward of this turn", r)   
 
-            # Update dataset
-            # ep = [0.3, 0.3, 0.1]
-            # X, Y, R = check(X, Y, R, X_new, Y_new, R_new, ep)
-            sigma = 0.2
-            X, Y = check(X, X_new, Y, Y_new, error, sigma, controller)
-            controller.model.set_data((X, Y))
-            
-            judge = input('Continue to collect data or not? (y/n)\n')
-            if judge == 'n': 
-                np.save('./examples/training_data_X.npy', X)
-                np.save('./examples/training_data_Y.npy', Y)
-                break
-    else:
+        # Update dataset
+        # ep = [0.3, 0.3, 0.1]
+        # X, Y, R = check(X, Y, R, X_new, Y_new, R_new, ep)
+        sigma = 0.8
+        X, Y = check(X, X_new, Y, Y_new, error, sigma, controller)
         controller.model.set_data((X, Y))
+
+        q += 1
+            
+            # judge = input('Continue to collect data or not? (y/n)\n')
+            # if judge == 'n': 
+            #     np.save('./examples/training_data_X.npy', X)
+            #     np.save('./examples/training_data_Y.npy', Y)
+            #     break
+    # else:
+    #     controller.model.set_data((X, Y))
 
     # Demonstration
     print('Evaluate the performance of the human controller\n')

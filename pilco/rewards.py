@@ -124,7 +124,8 @@ class CombinedRewards(Module):
         self.state_dim = state_dim
         self.base_rewards = rewards
         if coefs is not None:
-            self.coefs = Parameter(coefs, trainable=False)
+            # self.coefs = Parameter(coefs, trainable=False)
+            self.coefs = coefs
         else:
             self.coefs = Parameter(np.ones(len(rewards)), dtype=float_type, trainable=False)
 

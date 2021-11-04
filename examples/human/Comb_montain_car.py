@@ -39,7 +39,7 @@ class myCar():
         return self.env.step(action)
 
     def reset(self):
-        self.env.state = np.array([self.env.np_random.uniform(low=-0.6, high=-0.4), 0])
+        self.env.state = np.array([self.env.np_random.uniform(low=-0.4, high=-0.2), 0])
         return np.array(self.env.state, dtype=np.float64)
 
     def render(self):
@@ -70,21 +70,18 @@ class Normalised_Env():
     def render(self):
         self.env.render()
 
+    def close(self):
+        self.env.close()
+
 if __name__=='__main__':
     SUBS = 5
-    T = 20
+    T = 30
     env = myCar()
     # env = gym.make('MountainCarContinuous-v0')
     max_action = env.max_action
     # Initial random rollouts to generate a dataset
     if input("Give demonstration or not (y/n)\n") == 'y':
         Xc1, Yc1, X1, Y1 = rollout_both(env,timesteps=T,SUBS=SUBS, render=True)
-        # for i in range(1,6):
-        #     Xc1_, Yc1_, X1_, Y1_ = rollout_both(env,timesteps=T,SUBS=SUBS, render=True)
-        #     Xc1 = np.vstack((Xc1, Xc1_))
-        #     Yc1 = np.vstack((Yc1, Yc1_))
-        #     X1 = np.vstack((X1, X1_))
-        #     Y1 = np.vstack((Y1, Y1_))
     else:
         if os.path.exists('training_data_car_X.npy') & os.path.exists('training_data_car_Y.npy') \
         & os.path.exists('training_data_car_Yc.npy') & os.path.exists('training_data_car_Xc.npy'):
@@ -100,10 +97,10 @@ if __name__=='__main__':
     # np.save('./examples/human/training_data_car_Xc.npy', Xc1)
     # np.save('./examples/human/training_data_car_Yc.npy', Yc1)
 
-    np.save('training_data_car_X.npy', X1)
-    np.save('training_data_car_Y.npy', Y1)
-    np.save('training_data_car_Xc.npy', Xc1)
-    np.save('training_data_car_Yc.npy', Yc1)
+    # np.save('training_data_car_X.npy', X1)
+    # np.save('training_data_car_Y.npy', Y1)
+    # np.save('training_data_car_Xc.npy', Xc1)
+    # np.save('training_data_car_Yc.npy', Yc1)
 
     env = Normalised_Env(env, np.mean(X1[:,:2],0), np.std(X1[:,:2], 0))
     X = np.zeros(X1.shape)
@@ -124,23 +121,28 @@ if __name__=='__main__':
     controller = CombController(data_c, max_action=max_action)
 
     R = ExplodeReward(state_dim=1,
-                    t=np.divide([-0.5,0.0] - env.m, env.std)[0],
+                    t=np.divide([-1.2,0.0] - env.m, env.std)[0],
                     W=np.array([1.0]) + 1e-6,
                     select = [0]
                     )
+    Rp = ExponentialReward(state_dim=1,
+                t=np.divide([1.2,0.0] - env.m, env.std)[0],
+                W=np.array([2.0]) + 1e-6,
+                select = [0]
+                )
     R_pos = ExplodeReward(state_dim=1,
                     t=np.divide([-0.5,0.0] - env.m, env.std)[0],
                     W=np.array([1.0]) + 1e-6,
                     select = [0]
                     )
     R_vel = ExponentialReward(state_dim=1,
-                    t=np.divide([-0.5,0.0] - env.m, env.std)[1],
+                    t=np.divide([0.0,0.0] - env.m, env.std)[1],
                     W=np.array([1.0]) + 1e-6,
                     select = [1]
                     )
-    R_comb = CombinedRewards(state_dim=state_dim, rewards=[R_pos, R_vel], coefs=[1.0, 2.0])
+    R_comb = CombinedRewards(state_dim=state_dim, rewards=[R_pos, R_vel], coefs=[2.0, 1.0])
 
-    pilco = PILCO((X, Y), controller=controller, horizon=T, reward=R_comb, m_init=m_init, S_init=S_init)
+    pilco = PILCO((X, Y), controller=controller, reward=R, horizon=T, m_init=m_init, S_init=S_init)
 
     best_r = 0
     all_Rs = np.zeros((X.shape[0], 1))
@@ -162,15 +164,17 @@ if __name__=='__main__':
 
     print("Total ", total_r)
 
-    for i in range(1,8):
+    for i in range(1,5):
         X_, Y_, _, _ = rollout_comb(env, pilco, timesteps=T, random=False, SUBS=SUBS, render=True)
+        # _, _, X_, Y_ = rollout_both(env, timesteps=2*T, SUBS=SUBS, render=True)
         X = np.vstack((X, X_))
         Y = np.vstack((Y, Y_))
     pilco.mgpr.set_data((X, Y))
    
-    for rollouts in range(5):
-        pilco.optimize_models()
-        pilco.optimize_policy(maxiter=100, restarts=3)
+    for rollouts in range(10):
+        print("**** ITERATION no", rollouts, " ****")
+        pilco.optimize_models(maxiter=10, restarts=2)
+        pilco.optimize_policy(maxiter=10, restarts=2)
         # import pdb; pdb.set_trace()
         X_new, Y_new,_,_ = rollout_comb(env=env, pilco=pilco, timesteps=T, SUBS=SUBS, render=True)
 

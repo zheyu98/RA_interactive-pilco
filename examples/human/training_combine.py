@@ -29,24 +29,24 @@ class myPendulum():
     def step(self, action):
         return self.env.step(action)
 
+    def reset(self):
+        high = np.array([np.pi, 1.0])
+        self.env.state = np.random.uniform(low=-high, high=high)
+        self.env.state = np.random.uniform(low=0.0, high=0.01*high) # only difference
+        self.env.state[0] += -np.pi
+        self.env.last_u = None
+        return self.get_obs()
+
     # def reset(self):
-    #     high = np.array([np.pi, 1.0])
-    #     self.env.state = np.random.uniform(low=-high, high=high)
-    #     self.env.state = np.random.uniform(low=0.0, high=0.01*high) # only difference
-    #     self.env.state[0] += -np.pi
+    #     high = np.array([np.pi, 1])
+    #     self.env.state = self.env.np_random.uniform(low=-high, high=high)
     #     self.env.last_u = None
     #     return self.get_obs()
-
-    def reset(self):
-        # high = np.array([np.pi, 1])
-        # self.state = self.np_random.uniform(low=-high, high=high)
-        # self.last_u = None
-        # return self._get_obs()
-        return self.env.reset()
+        # return self.env.reset()
     
-    # def get_obs(self):
-    #     theta, thetadot = self.env.state
-    #     return np.array([np.cos(theta), np.sin(theta), thetadot], dtype=np.float64)
+    def get_obs(self):
+        theta, thetadot = self.env.state
+        return np.array([np.cos(theta), np.sin(theta), thetadot], dtype=np.float64)
 
     def render(self):
         self.env.render()
@@ -67,7 +67,7 @@ if __name__=='__main__':
     T = 40
     T_sim = T
     J = 4
-    N = 6
+    N = 8
     restarts = 2
  
     env = myPendulum()
@@ -84,10 +84,10 @@ if __name__=='__main__':
         else:
             raise Exception('Please give demonstration')
 
-    np.save('./examples/human/training_data_X.npy', X)
-    np.save('./examples/human/training_data_Y.npy', Y)
-    np.save('./examples/human/training_data_Xc.npy', Xc)
-    np.save('./examples/human/training_data_Yc.npy', Yc)
+    # np.save('./examples/human/training_data_X.npy', X)
+    # np.save('./examples/human/training_data_Y.npy', Y)
+    # np.save('./examples/human/training_data_Xc.npy', Xc)
+    # np.save('./examples/human/training_data_Yc.npy', Yc)
 
     data_c = [Xc,Yc]
     state_dim = Y.shape[1]
@@ -112,6 +112,7 @@ if __name__=='__main__':
         set_trainable(model.likelihood.variance, False)
 
     r_new = np.zeros((T, 1))
+    re_p = []; count = []; re_pn = []
     for rollouts in range(N):
         print("**** ITERATION no", rollouts, " ****")
         pilco.optimize_models(maxiter=maxiter, restarts=2)
@@ -126,45 +127,14 @@ if __name__=='__main__':
         total_r = sum(r_new)
         _, _, r = pilco.predict(X_new[0,None,:-1], 0.001 * S_init, T)
         print("Total ", total_r, " Predicted: ", r)
+        re_p.append(total_r)
+        re_pn.append(r)
+        count.append(rollouts)
 
         # Update dataset
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         pilco.mgpr.set_data((X, Y))
-
-    last = input('last command (y/n)\n')
-    if last == 'y':
-        print("**** Last visual ****")
-        X_new, Y_new, _, _ = rollout(env, pilco, timesteps=T_sim, verbose=True, SUBS=SUBS, render=True)
-        while True:
-            ornot = input('watch again? (y/n)\n')
-            if ornot == 'y':
-                X_new, Y_new, _, _ = rollout(env, pilco, timesteps=T_sim, verbose=True, SUBS=SUBS, render=True)
-            else:
-                break
-
-    for i,m in enumerate(pilco.mgpr.models):
-        y_pred_test, var_pred_test = m.predict_y(X_new)
-        plt.plot(range(len(y_pred_test)), y_pred_test, Y_new[:,i])
-        plt.fill_between(range(len(y_pred_test)),
-                        y_pred_test[:,0] - 2*np.sqrt(var_pred_test[:, 0]), 
-                        y_pred_test[:,0] + 2*np.sqrt(var_pred_test[:, 0]), alpha=0.3)
-        plt.show()
-
-    np.shape(var_pred_test)
-
-    m_p = np.zeros((T, state_dim))
-    S_p = np.zeros((T, state_dim, state_dim))
-
-    m_p[0,:] = m_init
-    S_p[0, :, :] = S_init
-
-    for h in range(1, T):
-        m_p[h,:], S_p[h,:,:] = pilco.propagate(m_p[h-1, None, :], S_p[h-1,:,:])
-        
-
-    for i in range(state_dim):    
-        plt.plot(range(T-1), m_p[0:T-1, i], X_new[1:T, i]) # can't use Y_new because it stores differences (Dx)
-        plt.fill_between(range(T-1),
-                        m_p[0:T-1, i] - 2*np.sqrt(S_p[0:T-1, i, i]),
-                        m_p[0:T-1, i] + 2*np.sqrt(S_p[0:T-1, i, i]), alpha=0.2)
-        plt.show()
+    
+    # np.save('./examples/human/plot/Comb_swing_pend_X2.npy', count)
+    # np.save('./examples/human/plot/Comb_swing_pend_Y2.npy', re_p)
+    # np.save('./examples/human/plot/Comb_swing_pend_Yn2.npy', re_pn)

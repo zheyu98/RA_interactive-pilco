@@ -179,7 +179,7 @@ class CombController(MGPR):
     def __init__(self, data, max_action=1.0):
         MGPR.__init__(self, data)
         for model in self.models:
-            model.kernel.variance.assign(0.1)
+            model.kernel.variance.assign(1.0)
             set_trainable(model.kernel.variance, False)
         self.max_action = max_action
 

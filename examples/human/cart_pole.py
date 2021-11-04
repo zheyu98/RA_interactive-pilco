@@ -31,7 +31,8 @@ class mycartpole():
         self.force_mag = 10.0
         self.tau = 0.02  # seconds between state updates
         self.kinematics_integrator = "euler"
-        self.theta_threshold_radians = 12 * 2 * math.pi / 360
+        # self.theta_threshold_radians = 12 * 2 * math.pi / 360
+        self.theta_threshold_radians = math.pi / 2
         self.x_threshold = 2.4
         high = np.array(
             [
@@ -92,9 +93,10 @@ class mycartpole():
 
         if not done:
             self.state = state
-            reward = 1.0; sig = 1
+            reward = 1.0
         else: 
-            reward = 0.0; sig = 0
+            self.state = state
+            reward = 0.0
         # elif self.steps_beyond_done is None:
         #     # Pole just fell!
         #     self.steps_beyond_done = 0
@@ -109,7 +111,7 @@ class mycartpole():
         #         )
         #     self.steps_beyond_done += 1
         #     reward = 0.0
-        return np.array(self.state, dtype=np.float64), reward, False, {}, sig
+        return np.array(self.state, dtype=np.float64), reward, done, {}
 
     def reset(self):
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
@@ -181,39 +183,73 @@ class mycartpole():
 
         return self.viewer.render(return_rgb_array=mode == "rgb_array")
 
+    def close(self):
+        return self.env.close()
+
+class Normalised_Env():
+    def __init__(self, env, m, std):
+        self.env = env
+        self.action_space = self.env.action_space
+        self.observation_space = self.env.observation_space
+        self.m = m
+        self.std = std
+
+    def state_trans(self, x):
+        return np.divide(x-self.m, self.std)
+
+    def step(self, action):
+        ob, r, done, _ = self.env.step(action)
+        return self.state_trans(ob), r, done, {}
+
+    def reset(self):
+        ob =  self.env.reset()
+        return self.state_trans(ob)
+
+    def render(self):
+        self.env.render()
+
 if __name__=='__main__':
     maxiter=10
     max_action=1.0 # actions for these environments are discrete
-    T = 40
-    J = 3
-    N = 12
-    T_sim = 40
+    T = 50
+    J = 4
+    N = 5
+    T_sim = T
     lens = []
     target = np.array([0.0, 0.0])
+    weights = np.diag([4.0, 3.0])
 
     env = mycartpole()
 
-    X, Y, _, _ = rollout(env, None, timesteps=T, random=True, render=True)
+    X1, Y1, _, _ = rollout(env, None, timesteps=T, random=True, render=True)
     for i in range(1,J):
-            X_, Y_, _, _ = rollout(env, None, timesteps=T, random=True, render=True)
-            X = np.vstack((X, X_))
-            Y = np.vstack((Y, Y_))
+        X_, Y_, _, _ = rollout(env, None, timesteps=T, random=True, render=True)
+        X1 = np.vstack((X1, X_))
+        Y1 = np.vstack((Y1, Y_))
+
+    env = Normalised_Env(env, np.mean(X1[:,:4],0), np.std(X1[:,:4], 0))
+    X = np.zeros(X1.shape)
+    X[:, :4] = np.divide(X1[:, :4] - np.mean(X1[:,:4],0), np.std(X1[:,:4], 0))
+    X[:, 4] = X1[:,-1] # control inputs are not normalised
+    Y = np.divide(Y1 , np.std(X1[:,:4], 0))
 
     state_dim = Y.shape[1]
     control_dim = X.shape[1] - state_dim
 
-    controller = RbfController(state_dim=state_dim, control_dim=control_dim, num_basis_functions=10)
+    controller = RbfController(state_dim=state_dim, control_dim=control_dim, num_basis_functions=30)
 
-    R = ExponentialReward(state_dim=2, t=target, select=[2,3])
-    print(X.shape); print(Y.shape)
+    R = ExponentialReward(state_dim=2, W=weights, t=target, select=[2,3])
+    # print(X.shape); print(Y.shape)
 
     pilco = PILCO((X, Y), controller=controller, reward=R, horizon=T)
 
     # for numerical stability
     for model in pilco.mgpr.models:
-        model.likelihood.variance.assign(0.001)
+        model.likelihood.variance.assign(0.05)
         set_trainable(model.likelihood.variance, False)
 
+    r_new = np.zeros((T, 1))
+    re_p = []; count = []; re_pn = []
     for rollouts in range(N):
         print("**** ITERATION no", rollouts, " ****")
         pilco.optimize_models(maxiter=maxiter, restarts=2)
@@ -221,7 +257,19 @@ if __name__=='__main__':
 
         X_new, Y_new, _, _ = rollout(env, pilco, timesteps=T_sim, render=True)
 
+        for i in range(len(X_new)):
+            r_new[:, 0] = R.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]
+            total_r = sum(r_new)
+            _, _, r = pilco.predict(X_new[0,None,:-1], 0.001 * np.diag(np.ones(state_dim) * 0.1), T)
+        print("Total ", total_r, " Predicted: ", r)
+        re_p.append(total_r)
+        re_pn.append(r)
+        count.append(rollouts)
+
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         pilco.mgpr.set_data((X, Y))
-        print(X.shape); print(Y.shape)
+        # print(X.shape); print(Y.shape)
 
+    np.save('./examples/human/plot/cart_pole_X.npy', count)
+    np.save('./examples/human/plot/cart_pole_Y.npy', re_p)
+    np.save('./examples/human/plot/cart_pole_Yn.npy', re_pn)

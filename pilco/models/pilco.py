@@ -54,14 +54,10 @@ class PILCO(gpflow.models.BayesianModel):
         '''
         Optimize GP models
         '''
-        contr_trainable_params = self.controller.trainable_parameters
-        for param in contr_trainable_params:
-            set_trainable(param, False)
-
         self.mgpr.optimize(restarts=restarts)
         # Print the resulting model parameters
         # ToDo: only do this if verbosity is large enough
-        lengthscales = {}; variances = {}; noises = {}
+        lengthscales = {}; variances = {}; noises = {};
         i = 0
         for model in self.mgpr.models:
             lengthscales['GP' + str(i)] = model.kernel.lengthscales.numpy()
@@ -77,9 +73,6 @@ class PILCO(gpflow.models.BayesianModel):
         print('---Noises---')
         print(pd.DataFrame(data=noises))
 
-        for param in contr_trainable_params:
-            set_trainable(param, True)
-
     def optimize_policy(self, maxiter=50, restarts=1):
         '''
         Optimize controller's parameter's
@@ -90,13 +83,13 @@ class PILCO(gpflow.models.BayesianModel):
             set_trainable(param, False)
 
         if not self.optimizer:
-            # self.optimizer = gpflow.optimizers.Scipy()
-            self.optimizer = tf.optimizers.Adam()
-            # self.optimizer.minimize(self.training_loss, self.trainable_variables, options=dict(maxiter=maxiter))
-            self.optimizer.minimize(self.training_loss, self.trainable_variables)
+            self.optimizer = gpflow.optimizers.Scipy()
+            # self.optimizer = tf.optimizers.Adam()
+            self.optimizer.minimize(self.training_loss, self.trainable_variables, options=dict(maxiter=maxiter))
+            # self.optimizer.minimize(self.training_loss, self.trainable_variables)
         else:
-            # self.optimizer.minimize(self.training_loss, self.trainable_variables, options=dict(maxiter=maxiter))
-            self.optimizer.minimize(self.training_loss, self.trainable_variables)
+            self.optimizer.minimize(self.training_loss, self.trainable_variables, options=dict(maxiter=maxiter))
+            # self.optimizer.minimize(self.training_loss, self.trainable_variables)
         end = time.time()
         print("Controller's optimization: done in %.1f seconds with reward=%.3f." % (end - start, self.compute_reward()))
         restarts -= 1
@@ -124,8 +117,6 @@ class PILCO(gpflow.models.BayesianModel):
         return self.controller.compute_action(x_m, tf.zeros([self.state_dim, self.state_dim], float_type))[0]
 
     def predict(self, m_x, s_x, n):
-        #
-        self.reward.reach = 0
         loop_vars = [
             tf.constant(0, tf.int32),
             m_x,
@@ -140,8 +131,7 @@ class PILCO(gpflow.models.BayesianModel):
             lambda j, m_x, s_x, reward: (
                 j + 1,
                 *self.propagate(m_x, s_x),
-                tf.add(reward, self.reward.compute_reward(m_x, s_x)[0])              
-                # tf.add(reward, self.reward.compute_reward(m_x, s_x, j, n)[0])
+                tf.add(reward, self.reward.compute_reward(m_x, s_x)[0])
             ), loop_vars
         )
         return m_x, s_x, reward
