@@ -17,7 +17,6 @@ float_type = config.default_float()
 
 def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=False):
         X = []; Y = []; counter = 0
-        success = False
         x = env.reset()
         ep_return_full = 0
         ep_return_sampled = 0
@@ -38,13 +37,12 @@ def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=Fa
             u_ps = policy(env, pilco, x, random)
 
             ##################################################
-            if abs(u_ps-0) <= abs(u_ps-1) :u=0
-            else:u=1
+            # if abs(u_ps-0) <= abs(u_ps-1) :u=0
+            # else:u=1
             ###############################################3##
 
-            # u = u_ps #+ cut(u_human, 8)*in_magni
+            u = u_ps #+ cut(u_human, 8)*in_magni
             for i in range(SUBS):
-                # x_new, r, done, _, sig = env.step(u)
                 x_new, r, done, _ = env.step(u)
                 ep_return_full += r
                 # if done: break
@@ -61,12 +59,12 @@ def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=Fa
             #     ep_return_sampled += r
             #     x = x_new
             ##########################
-            counter += 1
-            if counter % 6 == 0:
-                X.append(np.hstack((x, u)))
-                Y.append(x_new - x)
-            # X.append(np.hstack((x, u)))
-            # Y.append(x_new - x)
+            # if counter % 5 == 0:
+            #     X.append(np.hstack((x, u)))
+            #     Y.append(x_new - x)
+            # counter += 1
+            X.append(np.hstack((x, u)))
+            Y.append(x_new - x)
             ep_return_sampled += r
             x = x_new
             # if done: break
@@ -94,14 +92,14 @@ def on_press(key):
     global u_human
     if key == Key.right:
         if u_human>0:
-            u_human += 1
+            u_human += 2
         else:
-            u_human = 1
+            u_human = 2
     if key == Key.left:
         if u_human<0:
-            u_human -= 1
+            u_human -= 2
         else:
-            u_human = -1
+            u_human = -2
     if key == Key.down:
         u_human = 0
 
@@ -142,8 +140,6 @@ class Normalised_Env():
     def render(self):
         self.env.render()
 
-
-
 def save_pilco(path, X, Y, pilco, sparse=False):
     os.makedirs(path)
     # Dit hoeft eigenlijk niet. Staat in pilco.controller.models[0].X & Y
@@ -182,20 +178,8 @@ def rollout_comb(env, pilco, timesteps, verbose=True, random=False, SUBS=1, rend
         x = env.reset()
         ep_return_full = 0
         ep_return_sampled = 0
-        ## Add human input
-        # global u_human
-        # u_human = 0
-        # in_magni = 0.2
-        # t1=threading.Thread(target=start_key_listen)
-        # t1.start()
-        # print('You could give some corrective feedback: (Left or Right arrow)')
-        # time.sleep(1)
         for timestep in range(timesteps):
             if render: env.render()
-            # if timestep == 0:
-            #     sec = input('Let me know when to start.\n')
-            #     time.sleep(int(sec))
-            #     print('start now!')
             u_ps = policy(env, pilco, x, random)
             u = u_ps #+ cut(u_human, 8)*in_magni
             for i in range(SUBS):
@@ -203,11 +187,7 @@ def rollout_comb(env, pilco, timesteps, verbose=True, random=False, SUBS=1, rend
                 ep_return_full += r
                 # if done: break
                 if render: env.render()
-            # if verbose:
-            #     print("Action: ", u)
-            #     print("State : ", x_new)
-            #     print("Return so far: ", ep_return_full)
-            # if counter % 6 == 0:
+            # if counter % 5 == 0:
             #     X.append(np.hstack((x, u)))
             #     Y.append(x_new - x)
             # counter += 1
@@ -216,9 +196,5 @@ def rollout_comb(env, pilco, timesteps, verbose=True, random=False, SUBS=1, rend
             ep_return_sampled += r
             x = x_new
             # if done: break
-            time.sleep(0.05)
-        # autoin = Controller()
-        # autoin.press(Key.esc)
-        # autoin.release(Key.esc)
-        # t1.join()
+            # time.sleep(0.1)
         return np.stack(X), np.stack(Y), ep_return_sampled, ep_return_full

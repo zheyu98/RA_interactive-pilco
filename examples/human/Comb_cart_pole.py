@@ -260,7 +260,7 @@ if __name__=='__main__':
 
     controller = CombController(data_c, max_action=max_action)
 
-    R = ExponentialReward(state_dim=2, W=weights, t=target, select=[2,3])
+    R = ExponentialReward(state_dim=2, W=weights, t=target)
 
     pilco = PILCO((X, Y), controller=controller, reward=R, horizon=T)
 

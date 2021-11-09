@@ -16,7 +16,6 @@ class ExponentialReward(Module):
             self.t = Parameter(np.reshape(t, (1, state_dim)), trainable=False)
         else:
             self.t = Parameter(np.zeros((1, state_dim)), trainable=False)
-        self.reach = 0
 
     def compute_reward(self, m, s):
         '''
@@ -56,11 +55,6 @@ class ExponentialReward(Module):
         sR = r2 - muR @ muR
         muR.set_shape([1, 1])
         sR.set_shape([1, 1])
-        #
-        # if j<n-1:
-        #     if abs((m - self.t)[0,0]) <0.2: self.reach = 1
-        # if j == n-1 and self.reach == 0: 
-        #     muR = muR - 100 
         return muR, sR
 
 class UnboundedExponentialReward(Module):

@@ -2,7 +2,7 @@ import numpy as np
 import gym
 from gym import spaces
 from pilco.models import PILCO
-from pilco.controllers import HumanController, CombController
+from pilco.controllers import HumanController, CombController, RbfController
 from pilco.rewards import ExponentialReward, ExplodeReward, CombinedRewards
 import tensorflow as tf
 from utils import rollout, policy, rollout_comb
@@ -18,7 +18,7 @@ class myCar():
         self.min_action = self.env.min_action
         self.max_action = self.env.max_action
         self.min_position = self.env.min_position
-        self.env.max_position += 0.6
+        # self.env.max_position += 5
         self.max_position = self.env.max_position
         self.max_speed = self.env.max_speed
         self.low_state = np.array(
@@ -79,75 +79,70 @@ if __name__=='__main__':
     env = myCar()
     # env = gym.make('MountainCarContinuous-v0')
     max_action = env.max_action
-    # Initial random rollouts to generate a dataset
-    if input("Give demonstration or not (y/n)\n") == 'y':
-        Xc1, Yc1, X1, Y1 = rollout_both(env,timesteps=T,SUBS=SUBS, render=True)
-    else:
-        if os.path.exists('training_data_car_X.npy') & os.path.exists('training_data_car_Y.npy') \
-        & os.path.exists('training_data_car_Yc.npy') & os.path.exists('training_data_car_Xc.npy'):
-            Xc1 = np.load('training_data_car_Xc.npy')
-            Yc1 = np.load('training_data_car_Yc.npy')
-            X1 = np.load('training_data_car_X.npy')
-            Y1 = np.load('training_data_car_Y.npy')
-        else:
-            raise Exception('Please give demonstration')
-
-    # np.save('./examples/human/training_data_car_X.npy', X1)
-    # np.save('./examples/human/training_data_car_Y.npy', Y1)
-    # np.save('./examples/human/training_data_car_Xc.npy', Xc1)
-    # np.save('./examples/human/training_data_car_Yc.npy', Yc1)
-
-    # np.save('training_data_car_X.npy', X1)
-    # np.save('training_data_car_Y.npy', Y1)
-    # np.save('training_data_car_Xc.npy', Xc1)
-    # np.save('training_data_car_Yc.npy', Yc1)
+    
+    X1, Y1, _, _ = rollout(env, None, timesteps=T, random=True, SUBS=SUBS, render=False)
+    for i in range(1,4):
+        X_, Y_, _, _ = rollout(env, None, timesteps=T, random=True, SUBS=SUBS, render=False)
+        X1 = np.vstack((X1, X_))
+        Y1 = np.vstack((Y1, Y_))
 
     env = Normalised_Env(env, np.mean(X1[:,:2],0), np.std(X1[:,:2], 0))
-    X = np.zeros(X1.shape)
-    Xc = np.zeros(Xc1.shape)
-    X[:, :2] = np.divide(X1[:, :2] - np.mean(X1[:,:2],0), np.std(X1[:,:2], 0))
-    Xc = np.divide(Xc1 - np.mean(Xc1,0), np.std(Xc1, 0))
-    X[:, 2] = X1[:,-1] # control inputs are not normalised
-    Y = np.divide(Y1 , np.std(X1[:,:2], 0))
-    Yc = Yc1
-    # Xc = Xc1; Yc = Yc1; Y = Y1; X = X1
+    # X = np.zeros(X1.shape)
+    # X[:, :2] = np.divide(X1[:, :2] - np.mean(X1[:,:2],0), np.std(X1[:,:2], 0))
+    # X[:, 2] = X1[:,-1] # control inputs are not normalised
+    # Y = np.divide(Y1 , np.std(X1[:,:2], 0))
 
-    data_c = [Xc,Yc]
+    # Xc = np.zeros(Xc1.shape)
+    # Xc = np.divide(Xc1 - np.mean(Xc1,0), np.std(Xc1, 0))
+    # Yc = Yc1
+
+    if input("Give demonstration or not (y/n)\n") == 'y':
+        Xc, Yc, X, Y = rollout_both(env,timesteps=T,SUBS=SUBS, render=True)
+
     state_dim = Y.shape[1]
     control_dim = X.shape[1] - state_dim
     m_init =  np.transpose(X[0,:-1,None])
     # m_init = np.reshape([0.0, 0.0], (1,2))
     S_init =  0.5 * np.eye(state_dim)
-    controller = CombController(data_c, max_action=max_action)
+
+    controller = CombController(data=[Xc,Yc], max_action=max_action)
+    # controller = RbfController(state_dim=state_dim, max_action=max_action, control_dim=control_dim, num_basis_functions=25)
 
     R = ExplodeReward(state_dim=1,
-                    t=np.divide([-1.2,0.0] - env.m, env.std)[0],
-                    W=np.array([1.0]) + 1e-6,
+                    t=np.divide([-0.5,0.0] - env.m, env.std)[0],
+                    W=np.array([0.5]),
                     select = [0]
                     )
-    Rp = ExponentialReward(state_dim=1,
-                t=np.divide([1.2,0.0] - env.m, env.std)[0],
-                W=np.array([2.0]) + 1e-6,
-                select = [0]
-                )
+    Rp = ExponentialReward(state_dim=state_dim,
+                        t=np.divide([0.5,0.0] - env.m, env.std),
+                        W=np.diag([0.5,0.1])
+                        )
     R_pos = ExplodeReward(state_dim=1,
                     t=np.divide([-0.5,0.0] - env.m, env.std)[0],
                     W=np.array([1.0]) + 1e-6,
                     select = [0]
                     )
     R_vel = ExponentialReward(state_dim=1,
-                    t=np.divide([0.0,0.0] - env.m, env.std)[1],
+                    t=np.divide([-0.5,0.0] - env.m, env.std)[1],
                     W=np.array([1.0]) + 1e-6,
                     select = [1]
                     )
-    R_comb = CombinedRewards(state_dim=state_dim, rewards=[R_pos, R_vel], coefs=[2.0, 1.0])
+    R_comb = CombinedRewards(state_dim=state_dim, rewards=[R_pos, R_vel], coefs=[1.0, 2.0])
 
-    pilco = PILCO((X, Y), controller=controller, reward=R, horizon=T, m_init=m_init, S_init=S_init)
+    pilco = PILCO((X, Y), controller=controller, horizon=T, reward=Rp, m_init=m_init, S_init=S_init)
+
+    # _, _, X1, Y1 = rollout(env,timesteps=T,SUBS=SUBS, render=True)
+    for i in range(1,4):
+        X_, Y_, _, _ = rollout(env, pilco, timesteps=T, random=False, SUBS=SUBS, render=True)
+        # _, _, X_, Y_ = rollout(env,timesteps=T,SUBS=SUBS, render=True)
+        X = np.vstack((X, X_))
+        Y = np.vstack((Y, Y_))
+    pilco.mgpr.set_data((X,Y))
 
     best_r = 0
     all_Rs = np.zeros((X.shape[0], 1))
     for i in range(len(all_Rs)):
-        all_Rs[i,0] = R.compute_reward(X[i,None,:-1], 0.001 * np.eye(state_dim))[0]
+        all_Rs[i,0] = Rp.compute_reward(X[i,None,:-1], 0.001 * np.eye(state_dim))[0]
 
     ep_rewards = np.zeros((len(X)//T,1))
     for i in range(len(ep_rewards)):
@@ -158,32 +153,27 @@ if __name__=='__main__':
         model.likelihood.variance.assign(0.05)
         set_trainable(model.likelihood.variance, False)
 
-    for i in range(len(X)):
-        r_new[i, :] = R.compute_reward(X[i,None,:-1], 0.001 * np.eye(state_dim))[0]
-        total_r = sum(r_new)
-
-    print("Total ", total_r)
-
-    for i in range(1,5):
-        X_, Y_, _, _ = rollout_comb(env, pilco, timesteps=T, random=False, SUBS=SUBS, render=True)
-        # _, _, X_, Y_ = rollout_both(env, timesteps=2*T, SUBS=SUBS, render=True)
-        X = np.vstack((X, X_))
-        Y = np.vstack((Y, Y_))
-    pilco.mgpr.set_data((X, Y))
-   
+    re_p = []; count = []; re_pn = []
     for rollouts in range(10):
         print("**** ITERATION no", rollouts, " ****")
-        pilco.optimize_models(maxiter=10, restarts=2)
-        pilco.optimize_policy(maxiter=10, restarts=2)
+        pilco.optimize_models(maxiter=80, restarts=2)
+        pilco.optimize_policy(maxiter=80, restarts=2)
         # import pdb; pdb.set_trace()
         X_new, Y_new,_,_ = rollout_comb(env=env, pilco=pilco, timesteps=T, SUBS=SUBS, render=True)
 
         for i in range(len(X_new)):
-            r_new[i, :] = R.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]
+            r_new[i, :] = Rp.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]
         total_r = sum(r_new)
         _, _, r = pilco.predict(m_init, S_init, T)
+        re_p.append(total_r)
+        re_pn.append(r)
+        count.append(rollouts)
 
         print("Total ", total_r, " Predicted: ", r)
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         all_Rs = np.vstack((all_Rs, r_new)); ep_rewards = np.vstack((ep_rewards, np.reshape(total_r,(1,1))))
         pilco.mgpr.set_data((X, Y))
+
+    # np.save('./plot/Comb_montain_car_X.npy', count)
+    # np.save('./plot/Comb_montain_car_Y.npy', re_p)
+    # np.save('./plot/Comb_montain_car_Yn.npy', re_pn)

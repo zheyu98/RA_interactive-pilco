@@ -138,3 +138,7 @@ if __name__=='__main__':
     # np.save('./examples/human/plot/Comb_swing_pend_X2.npy', count)
     # np.save('./examples/human/plot/Comb_swing_pend_Y2.npy', re_p)
     # np.save('./examples/human/plot/Comb_swing_pend_Yn2.npy', re_pn)
+
+    np.save('./plot/Comb_swing_pend_X4.npy', count)
+    np.save('./plot/Comb_swing_pend_Y4.npy', re_p)
+    np.save('./plot/Comb_swing_pend_Yn4.npy', re_pn)

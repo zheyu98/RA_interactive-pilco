@@ -61,29 +61,28 @@ def rollout(env, controller, timesteps, control_dim=1, p_use=False, demon=False,
             t1.join()
         return np.stack(X), np.stack(Y), np.stack(human), ep_return_sampled, ep_return_full
 
-def policy(env, controller, x, random):
+def policy(env, pilco, x, random):
     if random:
         return env.action_space.sample()
     else:
-        uh = controller.compute_action(x[None, :], tf.zeros([controller.state_dim, controller.state_dim], float_type))[0]
-        return uh[0, :]
+        return pilco.compute_action(x[None, :])[0, :]
 
 ## human input
 def on_press(key):
     global u_human
     if key == Key.right:
         # u_human = 8
-        # u_human = 5
-        u_human = 1
+        u_human = 5
+        # u_human = 1
     if key == Key.left:
         # u_human = -8
-        # u_human = -5
-        u_human = 0
+        u_human = -5
+        # u_human = 0
     if key == Key.down:
         u_human = 0
     if key == KeyCode(char = 'a'):
         if u_human <0:
-            u_human -= 1
+            u_human += -1
         else:
             u_human = -1
     if key == KeyCode(char = 'd'):
@@ -132,7 +131,7 @@ class Normalised_Env():
         self.env.render()
 
 def rollout_both(env, timesteps, SUBS=1, random=False, render=False):
-        X = []; Y = []; Xc = []; Yc = []
+        X = []; Y = []; Xc = []; Yc = []; counter = 0
         x = env.reset()
         ep_return_full = 0
         ep_return_sampled = 0
@@ -152,8 +151,8 @@ def rollout_both(env, timesteps, SUBS=1, random=False, render=False):
                 sec = input('Let me know when to start.\n')
                 time.sleep(int(sec))
                 print('start now!')
-            # u = u_ps + cut(u_human, 10)*in_magni
-            u = u_human
+            u = u_ps + cut(u_human, 10)*in_magni
+            # u = u_human + u_ps
             if random: u = env.action_space.sample()
             for i in range(SUBS):
                 # x_new, r, done, _, sig = env.step(u)
@@ -161,7 +160,12 @@ def rollout_both(env, timesteps, SUBS=1, random=False, render=False):
                 ep_return_full += r
                 # if done: break
                 if render: env.render()
-            # if sig == 1:
+            # if counter % 5 == 0:
+            #     Xc.append(x)
+            #     Yc.append(u)
+            #     X.append(np.hstack((x, u)))
+            #     Y.append(x_new - x)
+            # counter += 1
             Xc.append(x)
             Yc.append(u)
             X.append(np.hstack((x, u)))
@@ -177,3 +181,55 @@ def rollout_both(env, timesteps, SUBS=1, random=False, render=False):
         t1.join()
         env.close()
         return np.stack(Xc), np.stack(Yc), np.stack(X), np.stack(Y)
+
+def rollout_feed(env, pilco, timesteps, random=False, SUBS=1, sig=False, render=False):
+        X = []; Y = []; X_re = []; counter = 0
+        x = env.reset()
+        ep_return_full = 0
+        ep_return_sampled = 0
+        # Add human input
+        global u_human
+        u_human = 0
+        in_magni = 1.0
+        t1=threading.Thread(target=start_key_listen)
+        t1.start()
+        print('You could give some corrective feedback: (Left or Right arrow)')
+        time.sleep(1)
+        for timestep in range(timesteps):
+            if render: env.render()
+            if timestep == 0: time.sleep(3); print('start now!')
+            u_ps = policy(env, pilco, x, random)
+
+            ##################################################
+            # if abs(u_ps-0) <= abs(u_ps-1) :u=0
+            # else:u=1
+            ###############################################3##
+
+            u = u_ps + cut(u_human, 8)*in_magni
+            for i in range(SUBS):
+                x_new, r, done, _ = env.step(u)
+                ep_return_full += r
+                # if done: break
+                if render: env.render()
+            if sig:
+                if counter % 6 == 0 or u_human != 0:
+                    X.append(np.hstack((x, u)))
+                    Y.append(x_new - x)
+                counter += 1
+            # else: 
+            #     if counter % 5 == 0:
+            #         X.append(np.hstack((x, u)))
+            #         Y.append(x_new - x)
+            #     counter += 1
+            else:
+                X.append(np.hstack((x, u)))
+                Y.append(x_new - x)
+            ep_return_sampled += r
+            x = x_new
+            # if done: break
+            time.sleep(0.2)
+        autoin = Controller()
+        autoin.press(Key.esc)
+        autoin.release(Key.esc)
+        t1.join()
+        return np.stack(X), np.stack(Y), ep_return_sampled, ep_return_full

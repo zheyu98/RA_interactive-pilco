@@ -5,6 +5,7 @@ from gym.utils import seeding
 import math
 import gpflow
 import os
+# from examples.human.Comb_montain_car import SUBS
 from pilco.models import PILCO
 from pilco.controllers import RbfController, LinearController, CombController
 from pilco.rewards import ExponentialReward
@@ -26,14 +27,14 @@ class mycartpole():
         self.masscart = 1.0
         self.masspole = 0.1
         self.total_mass = self.masspole + self.masscart
-        self.length = 0.5  # actually half the pole's length
+        self.length = 1.0  # actually half the pole's length
         self.polemass_length = self.masspole * self.length
         self.force_mag = 10.0
         self.tau = 0.02  # seconds between state updates
         self.kinematics_integrator = "euler"
         # self.theta_threshold_radians = 12 * 2 * math.pi / 360
         self.theta_threshold_radians = math.pi / 2
-        self.x_threshold = 2.4
+        self.x_threshold = 6.4
         high = np.array(
             [
                 self.x_threshold * 2,
@@ -43,7 +44,11 @@ class mycartpole():
             ],
             dtype=np.float64,
         )
-        self.action_space = spaces.Discrete(2)
+        self.max_action = 1.0
+        # self.action_space = spaces.Discrete(2)
+        self.action_space = gym.spaces.Box(
+            low=-self.max_action, high=self.max_action, shape=(1,), dtype=np.float64
+        )
         self.observation_space = spaces.Box(-high, high, dtype=np.float64)
         self.seed()
         self.viewer = None
@@ -55,11 +60,12 @@ class mycartpole():
         return [seed]
 
     def step(self, action):
-        err_msg = "%r (%s) invalid" % (action, type(action))
-        assert self.action_space.contains(action), err_msg
+        # err_msg = "%r (%s) invalid" % (action, type(action))
+        # assert self.action_space.contains(action), err_msg
 
         x, x_dot, theta, theta_dot = self.state
-        force = self.force_mag if action == 1 else -self.force_mag
+        # force = self.force_mag if action == 1 else -self.force_mag
+        force = self.force_mag * action[0]
         costheta = math.cos(theta)
         sintheta = math.sin(theta)
 
@@ -82,7 +88,7 @@ class mycartpole():
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
 
-        state = (x, x_dot, theta, theta_dot)
+        state = np.squeeze(np.array([x, x_dot, theta, theta_dot]))
 
         done = bool(
             x < -self.x_threshold
@@ -97,29 +103,17 @@ class mycartpole():
         else: 
             self.state = state
             reward = 0.0
-        # elif self.steps_beyond_done is None:
-        #     # Pole just fell!
-        #     self.steps_beyond_done = 0
-        #     reward = 1.0
-        # else:
-        #     if self.steps_beyond_done == 0:
-        #         logger.warn(
-        #             "You are calling 'step()' even though this "
-        #             "environment has already returned done = True. You "
-        #             "should always call 'reset()' once you receive 'done = "
-        #             "True' -- any further steps are undefined behavior."
-        #         )
-        #     self.steps_beyond_done += 1
-        #     reward = 0.0
-        return np.array(self.state, dtype=np.float64), reward, done, {}
+        return self.state, reward, done, {}
 
     def reset(self):
-        self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
+        high = np.array([0.5, 0.5, 0.5, 0.5])
+        self.state = np.random.uniform(low=0, high=high)
+        # self.state[2] += -np.pi
         self.steps_beyond_done = None
         return np.array(self.state, dtype=np.float64)
 
     def render(self, mode="human"):
-        screen_width = 600
+        screen_width = 800
         screen_height = 400
 
         world_width = self.x_threshold * 2
@@ -127,6 +121,7 @@ class mycartpole():
         carty = 100  # TOP OF CART
         polewidth = 10.0
         polelen = scale * (2 * self.length)
+        # polelen = 2 * self.length
         cartwidth = 50.0
         cartheight = 30.0
 
@@ -208,44 +203,56 @@ class Normalised_Env():
     def render(self):
         self.env.render()
 
+    def close(self):
+        return self.env.close()
+
 if __name__=='__main__':
-    maxiter=10
-    max_action=1.0 # actions for these environments are discrete
-    T = 50
+    maxiter=50
+    SUBS=1
+    T = 60
     J = 4
-    N = 5
+    N = 10
     T_sim = T
     lens = []
-    target = np.array([0.0, 0.0])
-    weights = np.diag([4.0, 3.0])
+    target = np.array([0.0, 0.0, 0.0, 0.0])
+    weights = np.diag([1.0, 0.3, 5.0, 0.3])
 
     env = mycartpole()
+    max_action=env.max_action
 
-    X1, Y1, _, _ = rollout(env, None, timesteps=T, random=True, render=True)
+    X1, Y1, _, _ = rollout(env, None, timesteps=T, SUBS=SUBS, random=True, render=True)
     for i in range(1,J):
-        X_, Y_, _, _ = rollout(env, None, timesteps=T, random=True, render=True)
+        X_, Y_, _, _ = rollout(env, None, timesteps=T, SUBS=SUBS, random=True, render=True)
         X1 = np.vstack((X1, X_))
         Y1 = np.vstack((Y1, Y_))
 
     env = Normalised_Env(env, np.mean(X1[:,:4],0), np.std(X1[:,:4], 0))
-    X = np.zeros(X1.shape)
-    X[:, :4] = np.divide(X1[:, :4] - np.mean(X1[:,:4],0), np.std(X1[:,:4], 0))
-    X[:, 4] = X1[:,-1] # control inputs are not normalised
-    Y = np.divide(Y1 , np.std(X1[:,:4], 0))
+    # X = np.zeros(X1.shape)
+    # X[:, :4] = np.divide(X1[:, :4] - np.mean(X1[:,:4],0), np.std(X1[:,:4], 0))
+    # X[:, 4] = X1[:,-1] # control inputs are not normalised
+    # Y = np.divide(Y1 , np.std(X1[:,:4], 0))
+
+    X, Y, _, _ = rollout(env, None, timesteps=T, SUBS=SUBS, random=True, render=True)
+    for i in range(1,J):
+        X_, Y_, _, _ = rollout(env, None, timesteps=T, SUBS=SUBS, random=True, render=True)
+        X = np.vstack((X, X_))
+        Y = np.vstack((Y, Y_))
 
     state_dim = Y.shape[1]
     control_dim = X.shape[1] - state_dim
+    m_init =  np.transpose(X[0,:-1,None])
+    S_init =  0.5 * np.eye(state_dim)
 
-    controller = RbfController(state_dim=state_dim, control_dim=control_dim, num_basis_functions=30)
+    controller = RbfController(state_dim=state_dim, control_dim=control_dim, max_action=max_action, num_basis_functions=30)
 
-    R = ExponentialReward(state_dim=2, W=weights, t=target, select=[2,3])
+    R = ExponentialReward(state_dim=state_dim, W=weights, t=target)
     # print(X.shape); print(Y.shape)
 
-    pilco = PILCO((X, Y), controller=controller, reward=R, horizon=T)
+    pilco = PILCO((X, Y), controller=controller, reward=R, horizon=T, m_init=m_init, S_init=S_init)
 
     # for numerical stability
     for model in pilco.mgpr.models:
-        model.likelihood.variance.assign(0.05)
+        model.likelihood.variance.assign(0.001)
         set_trainable(model.likelihood.variance, False)
 
     r_new = np.zeros((T, 1))
@@ -255,7 +262,7 @@ if __name__=='__main__':
         pilco.optimize_models(maxiter=maxiter, restarts=2)
         pilco.optimize_policy(maxiter=maxiter, restarts=2)
 
-        X_new, Y_new, _, _ = rollout(env, pilco, timesteps=T_sim, render=True)
+        X_new, Y_new, _, _ = rollout(env, pilco, timesteps=T_sim, SUBS=SUBS, render=True)
 
         for i in range(len(X_new)):
             r_new[:, 0] = R.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]

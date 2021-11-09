@@ -75,7 +75,7 @@ if __name__=='__main__':
     T = 40
     T_sim = T
     J = 4
-    N = 8
+    N = 10
     restarts = 2
 
     env = myPendulum()
@@ -124,6 +124,10 @@ if __name__=='__main__':
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         pilco.mgpr.set_data((X, Y))
 
-    np.save('./examples/human/plot/swing_pend_X.npy4', count)
-    np.save('./examples/human/plot/swing_pend_Y.npy4', re_p)
-    np.save('./examples/human/plot/swing_pend_Yn.npy4', re_pn)
+    # np.save('./examples/human/plot/swing_pend_X.npy', count)
+    # np.save('./examples/human/plot/swing_pend_Y.npy', re_p)
+    # np.save('./examples/human/plot/swing_pend_Yn.npy', re_pn)
+
+    np.save('./plot/swing_pend_X2.npy', count)
+    np.save('./plot/swing_pend_Y2.npy', re_p)
+    np.save('./plot/swing_pend_Yn2.npy', re_pn)
