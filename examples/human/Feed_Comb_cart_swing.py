@@ -43,7 +43,7 @@ class mycartpole():
             ],
             dtype=np.float64,
         )
-        self.max_action = 10.0
+        self.max_action = 2.0
         # self.action_space = spaces.Discrete(2)
         self.action_space = gym.spaces.Box(
             low=-self.max_action, high=self.max_action, shape=(1,), dtype=np.float64
@@ -210,7 +210,7 @@ if __name__=='__main__':
     pilco = PILCO((X, Y), controller=controller, reward=R, horizon=T, m_init=m_init, S_init=S_init)
 
     for i in range(1,J):
-        X_, Y_, _, _ = rollout(env, pilco, timesteps=T, SUBS=SUBS, random=False, render=True)
+        X_, Y_, _, _ = rollout_feed(env, pilco, timesteps=T, SUBS=SUBS, random=False, render=True)
         X = np.vstack((X, X_))
         Y = np.vstack((Y, Y_))
     pilco.mgpr.set_data((X,Y))
@@ -247,9 +247,9 @@ if __name__=='__main__':
     # np.save('./examples/human/plot/cart_pole_Y.npy', re_p)
     # np.save('./examples/human/plot/cart_pole_Yn.npy', re_pn)
 
-    np.save('./plot/Feed_Comb_cart_swing_X2.npy', count)
-    np.save('./plot/Feed_Comb_cart_swing_Y2.npy', re_p)
-    np.save('./plot/Feed_Comb_cart_swing_Yn2.npy', re_pn)
+    np.save('./plot/Feed_Comb_cart_swing_X4.npy', count)
+    np.save('./plot/Feed_Comb_cart_swing_Y4.npy', re_p)
+    np.save('./plot/Feed_Comb_cart_swing_Yn4.npy', re_pn)
 
 
 

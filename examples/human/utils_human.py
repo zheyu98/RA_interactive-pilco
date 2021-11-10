@@ -190,7 +190,7 @@ def rollout_feed(env, pilco, timesteps, random=False, SUBS=1, sig=False, render=
         # Add human input
         global u_human
         u_human = 0
-        in_magni = 1.0
+        in_magni = 0.2
         t1=threading.Thread(target=start_key_listen)
         t1.start()
         print('You could give some corrective feedback: (Left or Right arrow)')
@@ -205,25 +205,25 @@ def rollout_feed(env, pilco, timesteps, random=False, SUBS=1, sig=False, render=
             # else:u=1
             ###############################################3##
 
-            u = u_ps + cut(u_human, 8)*in_magni
+            u = u_ps + cut(u_human, 10)*in_magni
             for i in range(SUBS):
                 x_new, r, done, _ = env.step(u)
                 ep_return_full += r
                 # if done: break
                 if render: env.render()
             if sig:
-                if counter % 6 == 0 or u_human != 0:
+                if counter % 5 == 0 or u_human != 0:
                     X.append(np.hstack((x, u)))
                     Y.append(x_new - x)
                 counter += 1
-            # else: 
-            #     if counter % 5 == 0:
-            #         X.append(np.hstack((x, u)))
-            #         Y.append(x_new - x)
-            #     counter += 1
-            else:
-                X.append(np.hstack((x, u)))
-                Y.append(x_new - x)
+            else: 
+                if counter % 5 == 0:
+                    X.append(np.hstack((x, u)))
+                    Y.append(x_new - x)
+                counter += 1
+            # else:
+            #     X.append(np.hstack((x, u)))
+            #     Y.append(x_new - x)
             ep_return_sampled += r
             x = x_new
             # if done: break

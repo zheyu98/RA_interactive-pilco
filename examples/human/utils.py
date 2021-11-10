@@ -59,12 +59,12 @@ def rollout(env, pilco, timesteps, verbose=True, random=False, SUBS=1, render=Fa
             #     ep_return_sampled += r
             #     x = x_new
             ##########################
-            # if counter % 5 == 0:
-            #     X.append(np.hstack((x, u)))
-            #     Y.append(x_new - x)
-            # counter += 1
-            X.append(np.hstack((x, u)))
-            Y.append(x_new - x)
+            if counter % 5 == 0:
+                X.append(np.hstack((x, u)))
+                Y.append(x_new - x)
+            counter += 1
+            # X.append(np.hstack((x, u)))
+            # Y.append(x_new - x)
             ep_return_sampled += r
             x = x_new
             # if done: break

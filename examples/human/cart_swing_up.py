@@ -43,7 +43,7 @@ class mycartpole():
             ],
             dtype=np.float64,
         )
-        self.max_action = 10.0
+        self.max_action = 2.0
         # self.action_space = spaces.Discrete(2)
         self.action_space = gym.spaces.Box(
             low=-self.max_action, high=self.max_action, shape=(1,), dtype=np.float64
@@ -215,7 +215,7 @@ if __name__=='__main__':
     T_sim = T
     lens = []
     target = np.array([0.0, 0.0, 0.0, 0.0])
-    weights = np.diag([1.0, 0.3, 2.0, 0.3])
+    weights = np.diag([2.0, 0.3, 4.0, 0.3])
     m_init = np.reshape([0.0, 0.0, -np.pi, 0.0], (1,4))
     S_init = np.diag([0.01, 0.01, 0.05, 0.01])
 
@@ -277,7 +277,7 @@ if __name__=='__main__':
         pilco.mgpr.set_data((X, Y))
         print(X.shape); print(Y.shape)
 
-    np.save('./examples/human/plot/cart_swing_X3.npy', count)
-    np.save('./examples/human/plot/cart_swing_Y3.npy', re_p)
-    np.save('./examples/human/plot/cart_swing_Yn3.npy', re_pn)
+    np.save('./examples/human/plot/cart_swing_X4.npy', count)
+    np.save('./examples/human/plot/cart_swing_Y4.npy', re_p)
+    np.save('./examples/human/plot/cart_swing_Yn4.npy', re_pn)
 

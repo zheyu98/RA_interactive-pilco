@@ -43,7 +43,7 @@ class mycartpole():
             ],
             dtype=np.float64,
         )
-        self.max_action = 10.0
+        self.max_action = 2.0
         # self.action_space = spaces.Discrete(2)
         self.action_space = gym.spaces.Box(
             low=-self.max_action, high=self.max_action, shape=(1,), dtype=np.float64
@@ -189,7 +189,7 @@ if __name__=='__main__':
     T_sim = T
     lens = []
     target = np.array([0.0, 0.0, 0.0, 0.0])
-    weights = np.diag([1.0, 0.3, 2.0, 0.3])
+    weights = np.diag([2.0, 0.3, 4.0, 0.3])
     m_init = np.reshape([0.0, 0.0, -np.pi, 0.0], (1,4))
     S_init = np.diag([0.01, 0.01, 0.05, 0.01])
 
@@ -258,8 +258,8 @@ if __name__=='__main__':
     # np.save('./examples/human/plot/cart_pole_Y.npy', re_p)
     # np.save('./examples/human/plot/cart_pole_Yn.npy', re_pn)
 
-    np.save('./plot/Comb_cart_swing_X2.npy', count)
-    np.save('./plot/Comb_cart_swing_Y2.npy', re_p)
-    np.save('./plot/Comb_cart_swing_Yn2.npy', re_pn)
+    np.save('./plot/Comb_cart_swing_X10.npy', count)
+    np.save('./plot/Comb_cart_swing_Y10.npy', re_p)
+    np.save('./plot/Comb_cart_swing_Yn10.npy', re_pn)
 
 
