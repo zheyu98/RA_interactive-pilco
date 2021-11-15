@@ -10,6 +10,7 @@ from utils_human import rollout_both
 from gpflow import set_trainable
 import matplotlib.pyplot as plt
 import os
+import time
 np.random.seed(0)
 
 class myCar():
@@ -90,6 +91,7 @@ if __name__=='__main__':
     # Y = np.divide(Y1 , np.std(X1[:,:2], 0))
 
     X, Y, _, _ = rollout(env, None, timesteps=T, random=True, SUBS=SUBS, render=True)
+    start = time.time()
     for i in range(1,4):
         X_, Y_, _, _ = rollout(env, None, timesteps=T, random=True, SUBS=SUBS, render=True)
         X = np.vstack((X, X_))
@@ -160,6 +162,9 @@ if __name__=='__main__':
         all_Rs = np.vstack((all_Rs, r_new)); ep_rewards = np.vstack((ep_rewards, np.reshape(total_r,(1,1))))
         pilco.mgpr.set_data((X, Y))
 
-    np.save('./plot/montain_car_X4.npy', count)
-    np.save('./plot/montain_car_Y4.npy', re_p)
-    np.save('./plot/montain_car_Yn4.npy', re_pn)
+    end = time.time()
+    print("Time cost of this training process is ", end-start)
+
+    # np.save('./plot/montain_car_X4.npy', count)
+    # np.save('./plot/montain_car_Y4.npy', re_p)
+    # np.save('./plot/montain_car_Yn4.npy', re_pn)

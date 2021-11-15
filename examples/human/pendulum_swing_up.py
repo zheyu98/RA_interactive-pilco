@@ -9,6 +9,7 @@ from gpflow import set_trainable
 # %matplotlib inline
 # import matplotlib
 import matplotlib.pyplot as plt
+import time
 np.random.seed(0)
 
 # NEEDS a different initialisation than the one in gym (change the reset() method),
@@ -82,6 +83,7 @@ if __name__=='__main__':
 
     # Initial random rollouts to generate a dataset
     X, Y, _, _ = rollout(env, None, timesteps=T, random=True, SUBS=SUBS, render=True)
+    start = time.time()
     for i in range(1,J):
         X_, Y_, _, _ = rollout(env, None, timesteps=T, random=True, SUBS=SUBS, verbose=True, render=True)
         X = np.vstack((X, X_))
@@ -124,10 +126,13 @@ if __name__=='__main__':
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         pilco.mgpr.set_data((X, Y))
 
+    end = time.time()
+    print("Time cost of this training process is ", end-start)
+
     # np.save('./examples/human/plot/swing_pend_X.npy', count)
     # np.save('./examples/human/plot/swing_pend_Y.npy', re_p)
     # np.save('./examples/human/plot/swing_pend_Yn.npy', re_pn)
 
-    np.save('./plot/swing_pend_X2.npy', count)
-    np.save('./plot/swing_pend_Y2.npy', re_p)
-    np.save('./plot/swing_pend_Yn2.npy', re_pn)
+    # np.save('./plot/swing_pend_X2.npy', count)
+    # np.save('./plot/swing_pend_Y2.npy', re_p)
+    # np.save('./plot/swing_pend_Yn2.npy', re_pn)

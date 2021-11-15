@@ -1,7 +1,7 @@
 '''
 Author: your name
 Date: 2021-11-03 11:41:25
-LastEditTime: 2021-11-09 12:19:07
+LastEditTime: 2021-11-13 14:31:09
 LastEditors: Please set LastEditors
 Description: In User Settings Edit
 FilePath: /RA_interactive-pilco/examples/human/plot/Pend_swing.py
@@ -30,12 +30,15 @@ Yn4 = np.load('./examples/human/plot/Comb_montain_car_Yn4.npy')
 X_a = np.mean( np.array([X, X1, X2, X3, X4]), axis=0 )
 Y_a = np.mean( np.array([Y, Y1, Y2, Y3, Y4]), axis=0 )
 Yn_a = np.mean( np.array([Yn, Yn1, Yn2, Yn3, Yn4]), axis=0 )
+Yh_a = np.mean( np.array([5.40739728, 11.42437951, 2.76768555, 11.38728654, 6.22358548]))
 
 Y_max = np.maximum.reduce([Y, Y1, Y2, Y3, Y4])
 Yn_max = np.maximum.reduce([Yn, Yn1, Yn2, Yn3, Yn4])
+Yh_max = np.max(np.array([5.40739728, 11.42437951, 2.76768555, 11.38728654, 6.22358548]))
 
 Y_min = np.minimum.reduce([Y, Y1, Y2, Y3, Y4])
 Yn_min = np.minimum.reduce([Yn, Yn1, Yn2, Yn3, Yn4])
+Yh_min = np.min(np.array([5.40739728, 11.42437951, 2.76768555, 11.38728654, 6.22358548]))
 
 # Y_v = np.var([Y, Y1, Y2],axis=0).flatten()
 
@@ -92,17 +95,19 @@ Yn_fmax = np.maximum.reduce([Yn_f1, Yn_f2, Yn_f3])
 Y_fmin = np.minimum.reduce([Y_f1, Y_f2, Y_f3])
 Yn_fmin = np.minimum.reduce([Yn_f1, Yn_f2, Yn_f3])
 
-plt.plot(X_a, Y_a.flatten(), 'b', linewidth=3, label='Human demonstration + PILCO')
+plt.plot(X_a+1, Y_a.flatten(), 'b', linewidth=3, label='Human demonstration + PILCO')
+plt.plot([0,1],[Yh_a, Y_a.flatten()[0]], 'kp--', linewidth=3)
 # plt.plot(X_a, Yn_a.flatten(), 'r--', label='Predictive reward with human')
-plt.plot(X_oa, Y_oa.flatten(), 'r', linewidth=3, label='PILCO')
+plt.plot(X_oa+1, Y_oa.flatten(), 'r', linewidth=3, label='PILCO')
 # plt.plot(X_oa, Yn_oa.flatten(), 'b--', label='Predictive reward without human')
-plt.plot(X_fa, Y_fa.flatten(), 'g', linewidth=3, label='Human demonstration + feedback + PILCO')
+plt.plot(X_fa+1, Y_fa.flatten(), 'g', linewidth=3, label='Human demonstration + feedback + PILCO')
+plt.plot([0,1],[Yh_a, Y_fa.flatten()[0]], 'kp--', linewidth=3)
 
-plt.fill_between(X_a,Y_min.flatten(),Y_max.flatten(), alpha=0.4)
+plt.fill_between(np.insert(X_a+1,0,0),np.insert(Y_min.flatten(),0,Yh_min),np.insert(Y_max.flatten(),0,Yh_max), alpha=0.4)
 # plt.fill_between(X_a,Yn_min.flatten(),Yn_max.flatten(),  alpha=0.2)
-plt.fill_between(X_oa,Y_omin.flatten(),Y_omax.flatten(), alpha=0.4)
+plt.fill_between(X_oa+1,Y_omin.flatten(),Y_omax.flatten(), alpha=0.4)
 # plt.fill_between(X_oa,Yn_omin.flatten(),Yn_omax.flatten())
-plt.fill_between(X_fa,Y_fmin.flatten(),Y_fmax.flatten(), alpha=0.4)
+plt.fill_between(np.insert(X_fa+1,0,0),np.insert(Y_fmin.flatten(),0,Yh_min),np.insert(Y_fmax.flatten(),0,Yh_max), alpha=0.4)
 
 plt.xlabel('Iterations')
 plt.ylabel('Rewards')

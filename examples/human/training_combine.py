@@ -11,6 +11,7 @@ from gpflow import set_trainable
 # import matplotlib
 import matplotlib.pyplot as plt
 import os
+import time
 np.random.seed(0)
 
 # NEEDS a different initialisation than the one in gym (change the reset() method),
@@ -98,6 +99,14 @@ if __name__=='__main__':
     pilco = PILCO((X, Y), controller=controller, horizon=T, reward=R, m_init=m_init, S_init=S_init)
     print("Start PILCO optimization!")
 
+    r_h = np.zeros((T, 1))
+    for i in range(len(X)):
+        r_h[:, 0] = R.compute_reward(X[i,None,:-1], 0.001 * np.eye(state_dim))[0]
+        total_r = sum(r_h)
+    print("Total ", total_r)
+
+    start = time.time()
+
     # Initial random rollouts to generate a dataset
     # X, Y, _, _ = rollout(env, pilco, timesteps=T, random=True, SUBS=SUBS, render=True)
     for i in range(1,J):
@@ -135,10 +144,13 @@ if __name__=='__main__':
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         pilco.mgpr.set_data((X, Y))
     
+    end = time.time()
+    print("Time cost of this training process is ", end-start)
+    
     # np.save('./examples/human/plot/Comb_swing_pend_X2.npy', count)
     # np.save('./examples/human/plot/Comb_swing_pend_Y2.npy', re_p)
     # np.save('./examples/human/plot/Comb_swing_pend_Yn2.npy', re_pn)
 
-    np.save('./plot/Comb_swing_pend_X4.npy', count)
-    np.save('./plot/Comb_swing_pend_Y4.npy', re_p)
-    np.save('./plot/Comb_swing_pend_Yn4.npy', re_pn)
+    # np.save('./plot/Comb_swing_pend_X4.npy', count)
+    # np.save('./plot/Comb_swing_pend_Y4.npy', re_p)
+    # np.save('./plot/Comb_swing_pend_Yn4.npy', re_pn)

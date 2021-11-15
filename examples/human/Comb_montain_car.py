@@ -10,6 +10,7 @@ from utils_human import rollout_both
 from gpflow import set_trainable
 import matplotlib.pyplot as plt
 import os
+import time
 np.random.seed(0)
 
 class myCar():
@@ -131,7 +132,14 @@ if __name__=='__main__':
 
     pilco = PILCO((X, Y), controller=controller, horizon=T, reward=Rp, m_init=m_init, S_init=S_init)
 
+    r_h = np.zeros((T, 1))
+    for i in range(len(X)):
+        r_h[i, :] = Rp.compute_reward(X[i,None,:-1], 0.001 * np.eye(state_dim))[0]
+        total_r = sum(r_h)
+    print("Total ", total_r)
+
     # _, _, X1, Y1 = rollout(env,timesteps=T,SUBS=SUBS, render=True)
+    start = time.time()
     for i in range(1,4):
         X_, Y_, _, _ = rollout(env, pilco, timesteps=T, random=False, SUBS=SUBS, render=True)
         # _, _, X_, Y_ = rollout(env,timesteps=T,SUBS=SUBS, render=True)
@@ -173,6 +181,9 @@ if __name__=='__main__':
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         all_Rs = np.vstack((all_Rs, r_new)); ep_rewards = np.vstack((ep_rewards, np.reshape(total_r,(1,1))))
         pilco.mgpr.set_data((X, Y))
+
+    end = time.time()
+    print("Time cost of this training process is ", end-start)
 
     # np.save('./plot/Comb_montain_car_X.npy', count)
     # np.save('./plot/Comb_montain_car_Y.npy', re_p)

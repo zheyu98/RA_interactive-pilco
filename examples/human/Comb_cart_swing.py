@@ -12,6 +12,7 @@ import tensorflow as tf
 from utils import rollout, policy
 from utils_human import rollout_both
 from gpflow import set_trainable
+import time
 np.random.seed(0)
 
 # Introduces a simple wrapper for the gym environment
@@ -219,8 +220,15 @@ if __name__=='__main__':
     controller = CombController(data=data_c, max_action=max_action)
     R = ExponentialReward(state_dim=state_dim, W=weights, t=target)
 
+    r_h = np.zeros((T, 1))
+    for i in range(len(X)):
+        r_h[:, 0] = R.compute_reward(X[i,None,:-1], 0.001 * np.eye(state_dim))[0]
+        total_r = sum(r_h)
+    print("Total ", total_r)
+
     pilco = PILCO((X, Y), controller=controller, reward=R, horizon=T, m_init=m_init, S_init=S_init)
 
+    start = time.time()
     for i in range(1,J):
         X_, Y_, _, _ = rollout(env, pilco, timesteps=T, SUBS=SUBS, random=False, render=True)
         X = np.vstack((X, X_))
@@ -241,25 +249,28 @@ if __name__=='__main__':
 
         X_new, Y_new, _, _ = rollout(env, pilco, timesteps=T_sim, SUBS=SUBS, render=True)
 
-        for i in range(len(X_new)):
-            r_new[:, 0] = R.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]
-            total_r = sum(r_new)
-            _, _, r = pilco.predict(X_new[0,None,:-1], 0.001 * np.diag(np.ones(state_dim) * 0.1), T)
-        print("Total ", total_r, " Predicted: ", r)
-        re_p.append(total_r)
-        re_pn.append(r)
-        count.append(rollouts)
+        # for i in range(len(X_new)):
+        #     r_new[:, 0] = R.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]
+        #     total_r = sum(r_new)
+        #     _, _, r = pilco.predict(X_new[0,None,:-1], 0.001 * np.diag(np.ones(state_dim) * 0.1), T)
+        # print("Total ", total_r, " Predicted: ", r)
+        # re_p.append(total_r)
+        # re_pn.append(r)
+        # count.append(rollouts)
 
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         pilco.mgpr.set_data((X, Y))
         print(X.shape); print(Y.shape)
 
+    end = time.time()
+    print("Time cost of this training process is ", end-start)
+
     # np.save('./examples/human/plot/cart_pole_X.npy', count)
     # np.save('./examples/human/plot/cart_pole_Y.npy', re_p)
     # np.save('./examples/human/plot/cart_pole_Yn.npy', re_pn)
 
-    np.save('./plot/Comb_cart_swing_X10.npy', count)
-    np.save('./plot/Comb_cart_swing_Y10.npy', re_p)
-    np.save('./plot/Comb_cart_swing_Yn10.npy', re_pn)
+    # np.save('./plot/Comb_cart_swing_X10.npy', count)
+    # np.save('./plot/Comb_cart_swing_Y10.npy', re_p)
+    # np.save('./plot/Comb_cart_swing_Yn10.npy', re_pn)
 
 

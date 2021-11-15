@@ -12,6 +12,7 @@ import tensorflow as tf
 from utils import rollout, policy
 from utils_human import rollout_both
 from gpflow import set_trainable
+import time
 np.random.seed(0)
 
 # Introduces a simple wrapper for the gym environment
@@ -235,6 +236,7 @@ if __name__=='__main__':
     # Y = np.divide(Y1 , np.std(X1[:,:4], 0))
 
     X, Y, _, _ = rollout(env, None, timesteps=T, SUBS=SUBS, random=True, render=True)
+    start = time.time()
     for i in range(1,J):
         X_, Y_, _, _ = rollout(env, None, timesteps=T, SUBS=SUBS, random=True, render=True)
         X = np.vstack((X, X_))
@@ -264,20 +266,23 @@ if __name__=='__main__':
 
         X_new, Y_new, _, _ = rollout(env, pilco, timesteps=T_sim, SUBS=SUBS, render=True)
 
-        for i in range(len(X_new)):
-            r_new[:, 0] = R.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]
-            total_r = sum(r_new)
-            _, _, r = pilco.predict(X_new[0,None,:-1], 0.001 * np.diag(np.ones(state_dim) * 0.1), T)
-        print("Total ", total_r, " Predicted: ", r)
-        re_p.append(total_r)
-        re_pn.append(r)
-        count.append(rollouts)
+        # for i in range(len(X_new)):
+        #     r_new[:, 0] = R.compute_reward(X_new[i,None,:-1], 0.001 * np.eye(state_dim))[0]
+        #     total_r = sum(r_new)
+        #     _, _, r = pilco.predict(X_new[0,None,:-1], 0.001 * np.diag(np.ones(state_dim) * 0.1), T)
+        # print("Total ", total_r, " Predicted: ", r)
+        # re_p.append(total_r)
+        # re_pn.append(r)
+        # count.append(rollouts)
 
         X = np.vstack((X, X_new)); Y = np.vstack((Y, Y_new))
         pilco.mgpr.set_data((X, Y))
         print(X.shape); print(Y.shape)
 
-    np.save('./examples/human/plot/cart_swing_X4.npy', count)
-    np.save('./examples/human/plot/cart_swing_Y4.npy', re_p)
-    np.save('./examples/human/plot/cart_swing_Yn4.npy', re_pn)
+    end = time.time()
+    print("Time cost of this training process is ", end-start)
+
+    # np.save('./examples/human/plot/cart_swing_X4.npy', count)
+    # np.save('./examples/human/plot/cart_swing_Y4.npy', re_p)
+    # np.save('./examples/human/plot/cart_swing_Yn4.npy', re_pn)
 
