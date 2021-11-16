@@ -6,7 +6,6 @@ Home-page: http://github.com/nrontsis/PILCO
 Author: Nikitas Rontsis, Kyriakos Polymenakos
 Author-email: nrontsis@gmail.com
 License: MIT License
-Description: UNKNOWN
 Keywords: reinforcement-learning model-based-rl gaussian-processes tensorflow machine-learning
 Platform: UNKNOWN
 Classifier: License :: OSI Approved :: Apache Software License
@@ -18,3 +17,6 @@ Classifier: Programming Language :: Python :: 3.5
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
 Provides-Extra: Tensorflow with GPU
+
+UNKNOWN
+
