@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+    <param name="rand_controll" type="bool" value="False" />
+    <param name="pilco_controll" type="bool" value="False" />
+    <param name="stop" type="bool" value="False" />
+    <param name="contr_flag" type="int" value="0" />
+    
+    <node name="data_collect" pkg="dcsc_fpga" type="data_coll.py">
+    </node>
+    
+    <node name="contr_pend" pkg="dcsc_fpga" type="contr_pend.py" output="screen">
+    </node>
+    
+    <node name="pilco_node" pkg="dcsc_fpga" type="pilco_update.py" output="screen">
+    </node>
+</launch>

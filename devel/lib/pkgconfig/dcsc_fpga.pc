@@ -1,0 +1,8 @@
+prefix=/home/zheyu/Desktop/RA/real_pend/devel
+
+Name: dcsc_fpga
+Description: Description of dcsc_fpga
+Version: 0.0.0
+Cflags: -I/home/zheyu/Desktop/RA/real_pend/devel/include -I/home/zheyu/Desktop/RA/real_pend/src/dcsc_fpga/include
+Libs: -L${prefix}/lib -ldcsc_fpga
+Requires: roscpp std_msgs message_runtime
