@@ -1,2 +1,0 @@
-dcsc_fpga
--DCATKIN_DEVEL_PREFIX=/home/zheyu/Desktop/RA/real_pend/devel -DCMAKE_INSTALL_PREFIX=/home/zheyu/Desktop/RA/real_pend/install -G Unix Makefiles
